@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Dataset (extracted from ../InfraredSolarModules zip, too big to track)
+InfraredSolarModules/
+*.pkl
+models/

@@ -1,0 +1,11 @@
+# Install CPU torch first (no GPU on this machine):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# then: pip install -r requirements.txt
+fastai
+opencv-python
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+tqdm
