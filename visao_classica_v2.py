@@ -252,21 +252,29 @@ print("X:", X.shape, "| y:", y.shape)
 # %% [markdown]
 # ## 7. Baseline: regra manual
 #
-# Regra `if/else` na mão, para comparar com o classificador treinado.
+# Regra `if/else` na mão, para comparar com o classificador treinado. A ordem
+# dos testes segue o princípio **do mais extremo para o mais genérico**: a primeira
+# condição que casa decide, então casos abrangentes (catch-all) ficam por último.
+# Lógica por *quanto do módulo está quente*: nada → tudo quente → banda → pontos.
 
 
 # %%
 def classificar_regra(f):
+    # 1. Nada quente -> modulo nominal (maioria, curto-circuito no topo)
     if f["max_int"] < 185 and f["hot_fraction"] < 0.12:
         return "No-Anomaly"
-    if f["row_cov"] >= 0.5 and f["hot_fraction"] >= 0.22:
+    # 2. Calor muito espalhado (mais extremo): modulo quase todo quente
+    if f["hot_fraction"] >= 0.28 or f["largest_area"] >= 260:
+        return "Hot-Spot-Multi" if f["num_blobs"] >= 2 else "Offline-Module"
+    # 3. Mancha unica grande -> modulo desligado (aquecido por inteiro)
+    if f["largest_area"] >= 190:
+        return "Offline-Module"
+    # 4. Banda quente (diodo de bypass aquece 1/3 ~ 2/3 do modulo)
+    if f["row_cov"] >= 0.5:
         return "Diode-Multi"
     if f["row_cov"] >= 0.4 and f["largest_area"] >= 110:
         return "Diode"
-    if f["hot_fraction"] >= 0.28 or f["largest_area"] >= 260:
-        return "Hot-Spot-Multi"
-    if f["largest_area"] >= 190:
-        return "Offline-Module"
+    # 5. Pontos quentes localizados
     if f["num_blobs"] >= 2:
         return "Cell-Multi"
     return "Cell"
