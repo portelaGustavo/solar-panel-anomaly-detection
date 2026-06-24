@@ -14,17 +14,20 @@
 # %% [markdown]
 # # Visão Clássica v2 — Detecção de Anomalias em Painéis Solares
 #
-# Nossa versão do método clássico (sem deep learning). Em relação à v1,
-# acrescentamos: **mais features térmicas**, **regra multiclasse** (não só 3 classes)
-# e **métricas por classe** (precision/recall/F1).
+# Nossa versão do método clássico (sem deep learning). Em relação à v1, acrescentamos:
 #
-# Roda no Colab e no local. As imagens aparecem inline a cada etapa.
+# 1. **Features ricas** por imagem (intensidade, forma da região quente, bordas,
+#    textura, simetria, histograma) — não só a área do maior blob.
+# 2. **Classificador treinado** (RandomForest) sobre essas features, no lugar de
+#    regras `if/else` na mão.
+# 3. **Métricas por classe** (precision/recall/F1) e comparação regra-manual vs ML.
+#
+# Tudo roda em CPU (não precisa de GPU). Imagens aparecem inline a cada etapa.
 
 # %% [markdown]
 # ## 1. Setup e download do dataset
 #
-# Baixa e extrai o dataset em Python puro (funciona no Colab sem `!wget`/`!unzip`).
-# Se o dataset já existe (ex.: rodando local), não baixa de novo.
+# Baixa e extrai em Python puro (funciona no Colab sem `!wget`/`!unzip`). Pula se já existe.
 
 # %%
 import json
@@ -37,7 +40,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 from tqdm import tqdm
 
 try:
@@ -66,8 +71,6 @@ garantir_dataset()
 
 # %% [markdown]
 # ## 2. Leitura do JSON e criação do DataFrame
-#
-# O `module_metadata.json` mapeia cada imagem para sua classe de anomalia.
 
 # %%
 with open(DATA_DIR / "module_metadata.json", "r") as f:
@@ -82,24 +85,19 @@ print(df["anomaly_class"].value_counts())
 # ## 3. Visualização das amostras por classe
 #
 # Imagens infravermelhas em tons de cinza (24x40 px). Defeitos térmicos aparecem
-# como regiões mais claras (quentes).
+# como regiões mais claras (quentes); outras anomalias (sombra, vegetação) como regiões escuras.
 
 
 # %%
 def visualizar_amostras(df, classe_nome, num_amostras=5):
     df_filtrado = df[df["anomaly_class"] == classe_nome]
     amostras = df_filtrado.sample(min(len(df_filtrado), num_amostras))
-
     fig, axes = plt.subplots(1, num_amostras, figsize=(15, 3))
     fig.suptitle(f"Amostras da classe: {classe_nome}", fontsize=16)
     if num_amostras == 1:
         axes = [axes]
     for ax, caminho_imagem in zip(axes, amostras["image_filepath"]):
         img = cv2.imread(str(DATA_DIR / caminho_imagem), cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            ax.set_title("Erro ao carregar")
-            ax.axis("off")
-            continue
         ax.imshow(img, cmap="gray", vmin=0, vmax=255)
         ax.axis("off")
     plt.tight_layout()
@@ -113,9 +111,8 @@ for classe in ["No-Anomaly", "Hot-Spot", "Offline-Module", "Cell"]:
 # %% [markdown]
 # ## 4. Pipeline clássico: threshold → morfologia → contornos
 #
-# Numa imagem da classe `Cell` (ponto quente): binarizamos pelo limiar, limpamos
-# com erosão/dilatação e extraímos contornos da região quente. Por fim desenhamos
-# a caixa do defeito detectado.
+# Demonstração numa imagem `Cell` (ponto quente): binariza, limpa com morfologia,
+# extrai contornos e desenha a caixa do defeito.
 
 # %%
 amostra = df[df["anomaly_class"] == "Cell"].sample(1).iloc[0]
@@ -128,111 +125,135 @@ img_erodida = cv2.erode(img_binaria, kernel, iterations=1)
 img_dilatada = cv2.dilate(img_erodida, kernel, iterations=1)
 
 fig, axes = plt.subplots(1, 4, figsize=(16, 4))
-titulos = ["Original", f"Binaria (>{limiar})", "Apos Erosao", "Apos Dilatacao"]
-for ax, img, titulo in zip(axes, [img_original, img_binaria, img_erodida, img_dilatada], titulos):
+for ax, img, titulo in zip(
+    axes,
+    [img_original, img_binaria, img_erodida, img_dilatada],
+    ["Original", f"Binaria (>{limiar})", "Apos Erosao", "Apos Dilatacao"],
+):
     ax.imshow(img, cmap="gray", vmin=0, vmax=255)
     ax.set_title(titulo)
     ax.axis("off")
 plt.tight_layout()
 plt.show()
 
-# %%
-contornos, _ = cv2.findContours(img_dilatada, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-img_resultado = cv2.cvtColor(img_original, cv2.COLOR_GRAY2BGR)
-anomalia_detectada = False
-for contorno in contornos:
-    area = cv2.contourArea(contorno)
-    if area > 5:
-        anomalia_detectada = True
-        x, y, w, h = cv2.boundingRect(contorno)
-        cv2.rectangle(img_resultado, (x, y), (x + w, y + h), (255, 0, 0), 1)
-        print(f"Area do defeito: {area} pixels.")
-if not anomalia_detectada:
-    print("No-Anomaly. Nenhuma mancha quente significativa.")
-    cv2.rectangle(img_resultado, (0, 0),
-                  (img_original.shape[1] - 1, img_original.shape[0] - 1), (0, 255, 0), 1)
-
-plt.figure(figsize=(4, 6))
-plt.imshow(cv2.cvtColor(img_resultado, cv2.COLOR_BGR2RGB))
-plt.title("Deteccao Final")
-plt.axis("off")
-plt.show()
-
 # %% [markdown]
-# ## 5. Extração de features térmicas (nossa adição)
+# ## 5. Extração de features (nossa adição #2)
 #
-# A v1 usava só a **área do maior blob**. Aqui extraímos **7 features** por imagem.
-# A ideia: a *forma* e a *fração* da região quente separam as classes (ponto isolado
-# vs banda de 1/3 do módulo vs módulo inteiro quente).
+# A v1 usava só a área do maior blob. Aqui extraímos **~25 features** por imagem,
+# cobrindo vários tipos de anomalia (não só ponto quente):
 #
-# - `mean_int`, `max_int`: intensidade média e máxima (No-Anomaly tem max baixo)
-# - `hot_fraction`: fração de pixels quentes
-# - `num_blobs`: nº de manchas quentes (1 = Cell, várias = Cell-Multi)
-# - `largest_area`: área da maior mancha
-# - `row_cov`, `col_cov`: cobertura por linha/coluna (detecta banda do diodo)
+# - **Intensidade**: média, desvio, máx, mín, percentil 90
+# - **Região quente** (limiar Otsu adaptativo): fração, nº de blobs, área/extensão/aspecto do maior, cobertura por linha/coluna
+# - **Região escura**: fração de pixels frios → sombra / vegetação
+# - **Bordas** (Canny): densidade → trincas (Cracking)
+# - **Textura** (gradiente Sobel): rugosidade → sujeira (Soiling)
+# - **Simetria** esquerda-direita / cima-baixo
+# - **Histograma** (8 bins): distribuição térmica
+
 
 # %%
-HOT_FLOOR = 200  # intensidade minima para um pixel ser considerado "quente"
-
-
 def extrair_features(img):
+    img = img.astype(np.uint8)
     total = img.size
-    mean_int = float(img.mean())
-    max_int = int(img.max())
+    f = {}
 
-    _, hot = cv2.threshold(img, HOT_FLOOR, 255, cv2.THRESH_BINARY)
+    # Intensidade
+    f["mean_int"] = float(img.mean())
+    f["std_int"] = float(img.std())
+    f["max_int"] = float(img.max())
+    f["min_int"] = float(img.min())
+    f["p90_int"] = float(np.percentile(img, 90))
+
+    # Regiao quente via Otsu (adaptativo) com piso absoluto
+    otsu_t, _ = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    t = max(otsu_t, 180)
+    _, hot = cv2.threshold(img, t, 255, cv2.THRESH_BINARY)
     hot = cv2.morphologyEx(hot, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-    hot_fraction = float(hot.sum() / 255) / total
+    f["hot_fraction"] = float(hot.sum() / 255) / total
 
     contornos, _ = cv2.findContours(hot, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     blobs = [c for c in contornos if cv2.contourArea(c) >= 2]
-    num_blobs = len(blobs)
-    largest_area = max((cv2.contourArea(c) for c in blobs), default=0.0)
+    f["num_blobs"] = float(len(blobs))
+    if blobs:
+        maior = max(blobs, key=cv2.contourArea)
+        area = cv2.contourArea(maior)
+        x, y, w, h = cv2.boundingRect(maior)
+        f["largest_area"] = float(area)
+        f["largest_extent"] = float(area / (w * h)) if w * h > 0 else 0.0
+        f["largest_aspect"] = float(w / h) if h > 0 else 0.0
+    else:
+        f["largest_area"] = f["largest_extent"] = f["largest_aspect"] = 0.0
+    f["row_cov"] = float((hot.sum(axis=1) > 0).mean())
+    f["col_cov"] = float((hot.sum(axis=0) > 0).mean())
 
-    row_cov = float((hot.sum(axis=1) > 0).mean())
-    col_cov = float((hot.sum(axis=0) > 0).mean())
+    # Regiao escura (sombra / vegetacao): pixels bem abaixo da media
+    f["dark_fraction"] = float((img < (img.mean() - img.std())).mean())
 
-    return {
-        "mean_int": mean_int,
-        "max_int": max_int,
-        "hot_fraction": hot_fraction,
-        "num_blobs": num_blobs,
-        "largest_area": largest_area,
-        "row_cov": row_cov,
-        "col_cov": col_cov,
-    }
+    # Bordas (trincas) e textura (sujeira)
+    f["edge_density"] = float((cv2.Canny(img, 50, 150) > 0).mean())
+    gx = cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(img, cv2.CV_32F, 0, 1, ksize=3)
+    f["grad_mean"] = float(np.sqrt(gx ** 2 + gy ** 2).mean())
 
+    # Simetria
+    imgf = img.astype(np.float32)
+    f["sym_lr"] = float(np.abs(imgf - np.fliplr(imgf)).mean())
+    f["sym_tb"] = float(np.abs(imgf - np.flipud(imgf)).mean())
+
+    # Histograma (8 bins, normalizado)
+    hist = cv2.calcHist([img], [0], None, [8], [0, 256]).flatten()
+    hist = hist / hist.sum()
+    for i, hv in enumerate(hist):
+        f[f"hist{i}"] = float(hv)
+
+    return f
+
+
+FEAT_NAMES = list(extrair_features(img_original).keys())
+print(f"{len(FEAT_NAMES)} features:", FEAT_NAMES)
 
 # %%
-# Mostra a mascara de pixels quentes (base das features) numa amostra
+# Visualiza a regiao quente (Otsu) que alimenta as features
 amostra_feat = df[df["anomaly_class"] == "Hot-Spot-Multi"].sample(1).iloc[0]
 img_feat = cv2.imread(str(DATA_DIR / amostra_feat["image_filepath"]), cv2.IMREAD_GRAYSCALE)
-_, hot = cv2.threshold(img_feat, HOT_FLOOR, 255, cv2.THRESH_BINARY)
-hot = cv2.morphologyEx(hot, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+otsu_t, _ = cv2.threshold(img_feat, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+_, hot_vis = cv2.threshold(img_feat, max(otsu_t, 180), 255, cv2.THRESH_BINARY)
+edges_vis = cv2.Canny(img_feat, 50, 150)
 
-fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-axes[0].imshow(img_feat, cmap="gray", vmin=0, vmax=255)
-axes[0].set_title(f"Original ({amostra_feat['anomaly_class']})")
-axes[0].axis("off")
-axes[1].imshow(hot, cmap="gray")
-axes[1].set_title("Mascara quente")
-axes[1].axis("off")
+fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+for ax, im, tt in zip(axes, [img_feat, hot_vis, edges_vis],
+                      [f"Original ({amostra_feat['anomaly_class']})", "Regiao quente (Otsu)", "Bordas (Canny)"]):
+    ax.imshow(im, cmap="gray")
+    ax.set_title(tt)
+    ax.axis("off")
 plt.show()
 
-print("Features dessa imagem:")
-for k, v in extrair_features(img_feat).items():
-    print(f"  {k:14s} = {v}")
+# %% [markdown]
+# ## 6. Matriz de features de todo o dataset
+#
+# Extrai as features das 20.000 imagens (rápido, CPU). `X` = features, `y` = classe.
+
+# %%
+registros, y = [], []
+for _, row in tqdm(df.iterrows(), total=df.shape[0]):
+    img = cv2.imread(str(DATA_DIR / row["image_filepath"]), cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        continue
+    registros.append(extrair_features(img))
+    y.append(row["anomaly_class"])
+
+X = np.array([[r[k] for k in FEAT_NAMES] for r in registros])
+y = np.array(y)
+print("X:", X.shape, "| y:", y.shape)
 
 # %% [markdown]
-# ## 6. Regra de classificação multiclasse
+# ## 7. Baseline: regra manual (o que tínhamos antes)
 #
-# Limiares derivados do diagnóstico das médias de cada feature por classe.
-# Cobre as classes com assinatura térmica clara. As classes não-térmicas
-# (Shadowing, Vegetation, Soiling, Cracking) são difíceis por este método.
+# Regra `if/else` na mão, para comparar com o classificador treinado.
 
 
 # %%
-def classificar(f):
+def classificar_regra(f):
     if f["max_int"] < 185 and f["hot_fraction"] < 0.12:
         return "No-Anomaly"
     if f["row_cov"] >= 0.5 and f["hot_fraction"] >= 0.22:
@@ -248,48 +269,63 @@ def classificar(f):
     return "Cell"
 
 
+y_regra = [classificar_regra(r) for r in registros]
+print(f"Baseline regra manual — acuracia: {accuracy_score(y, y_regra) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y, y_regra, average='macro') * 100:.1f}%")
+
+# %% [markdown]
+# ## 8. Classificador treinado: RandomForest (nossa adição #1)
+#
+# Treina sobre as features. `class_weight='balanced'` compensa o desbalanceamento.
+# Split estratificado 70/30.
+
 # %%
-# Regra em acao: amostras aleatorias com classe real vs prevista (verde = acerto)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+clf = RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=42, n_jobs=-1)
+clf.fit(X_tr, y_tr)
+pred = clf.predict(X_te)
+
+print(f"RandomForest — acuracia: {accuracy_score(y_te, pred) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred, average='macro') * 100:.1f}%\n")
+print("--- Relatorio por classe ---")
+print(classification_report(y_te, pred, zero_division=0))
+
+# %% [markdown]
+# ## 9. Resultados: matriz de confusão, importância das features e amostras previstas
+
+# %%
+classes = sorted(set(y))
+matriz = confusion_matrix(y_te, pred, labels=classes)
+plt.figure(figsize=(11, 8))
+sns.heatmap(matriz, annot=True, fmt="d", cmap="Blues", xticklabels=classes, yticklabels=classes)
+plt.title("Matriz de Confusao - RandomForest", fontsize=15)
+plt.ylabel("Classe Verdadeira")
+plt.xlabel("Previsao")
+plt.xticks(rotation=45, ha="right")
+plt.show()
+
+# %%
+# Importancia das features
+imp = sorted(zip(FEAT_NAMES, clf.feature_importances_), key=lambda x: x[1], reverse=True)
+nomes, vals = zip(*imp)
+plt.figure(figsize=(10, 6))
+sns.barplot(x=list(vals), y=list(nomes), color="steelblue")
+plt.title("Importancia das features (RandomForest)")
+plt.xlabel("Importancia")
+plt.tight_layout()
+plt.show()
+
+# %%
+# Amostras aleatorias: classe real vs prevista pelo RandomForest (verde = acerto)
 amostra_pred = df.sample(8, random_state=0)
 fig, axes = plt.subplots(2, 4, figsize=(14, 6))
 for ax, (_, r) in zip(axes.ravel(), amostra_pred.iterrows()):
     img = cv2.imread(str(DATA_DIR / r["image_filepath"]), cv2.IMREAD_GRAYSCALE)
-    pred = classificar(extrair_features(img))
-    cor = "green" if pred == r["anomaly_class"] else "red"
+    vec = np.array([[extrair_features(img)[k] for k in FEAT_NAMES]])
+    pr = clf.predict(vec)[0]
+    cor = "green" if pr == r["anomaly_class"] else "red"
     ax.imshow(img, cmap="gray", vmin=0, vmax=255)
-    ax.set_title(f"real: {r['anomaly_class']}\nprev: {pred}", color=cor, fontsize=9)
+    ax.set_title(f"real: {r['anomaly_class']}\nprev: {pr}", color=cor, fontsize=9)
     ax.axis("off")
 plt.tight_layout()
-plt.show()
-
-
-# %% [markdown]
-# ## 7. Avaliação: acurácia, F1 por classe e matriz de confusão
-#
-# Roda a regra sobre todo o dataset. Atenção: acurácia global engana em dataset
-# desbalanceado, por isso olhamos o relatório por classe.
-
-# %%
-y_verdadeiro, y_previsto = [], []
-for _, row in tqdm(df.iterrows(), total=df.shape[0]):
-    img = cv2.imread(str(DATA_DIR / row["image_filepath"]), cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        continue
-    y_verdadeiro.append(row["anomaly_class"])
-    y_previsto.append(classificar(extrair_features(img)))
-
-print(f"\nAcuracia geral: {accuracy_score(y_verdadeiro, y_previsto) * 100:.2f}%\n")
-print("--- Relatorio por classe ---")
-print(classification_report(y_verdadeiro, y_previsto, zero_division=0))
-
-# %%
-classes_unicas = sorted(set(y_verdadeiro) | set(y_previsto))
-matriz = confusion_matrix(y_verdadeiro, y_previsto, labels=classes_unicas)
-plt.figure(figsize=(12, 8))
-sns.heatmap(matriz, annot=True, fmt="d", cmap="Blues",
-            xticklabels=classes_unicas, yticklabels=classes_unicas)
-plt.title("Matriz de Confusao - Visao Classica v2", fontsize=16)
-plt.ylabel("Classe Verdadeira", fontsize=12)
-plt.xlabel("Previsao do Algoritmo", fontsize=12)
-plt.xticks(rotation=45, ha="right")
 plt.show()
