@@ -398,3 +398,121 @@ f1_por_classe = {nome: f1_score(y_te, p, average=None, labels=classes) for nome,
 tab_f1 = pd.DataFrame(f1_por_classe, index=classes).round(2)
 tab_f1["melhor"] = tab_f1.idxmax(axis=1)
 print(tab_f1)
+
+# %% [markdown]
+# ## 12. Melhoria: features de grade 3x3 + LBP
+#
+# Adicionamos dois grupos de features ao RandomForest, mantendo as mesmas 12 classes
+# para medir o impacto direto:
+#
+# - **Grade 3x3** (9 features): divide a imagem em 9 células e mede a intensidade média
+#   de cada uma. Informa *onde* está o calor — útil para o Diode (aquece o terço inferior).
+# - **LBP** (Local Binary Patterns, 10 features): descritor de textura local. Ajuda em
+#   anomalias de superfície como Soiling.
+
+# %%
+from skimage.feature import local_binary_pattern
+
+
+def extrair_features_extra(img):
+    img = img.astype(np.uint8)
+    h, w = img.shape
+    hs, ws = h // 3, w // 3
+    extra = {}
+    # Grade 3x3: intensidade media por celula (localizacao do calor)
+    for i in range(3):
+        for j in range(3):
+            y0, y1 = i * hs, (h if i == 2 else (i + 1) * hs)
+            x0, x1 = j * ws, (w if j == 2 else (j + 1) * ws)
+            extra[f"grid_{i}{j}"] = float(img[y0:y1, x0:x1].mean())
+    # LBP uniforme (textura): histograma de 10 bins
+    lbp = local_binary_pattern(img, P=8, R=1, method="uniform")
+    hist, _ = np.histogram(lbp, bins=10, range=(0, 10), density=True)
+    for k, v in enumerate(hist):
+        extra[f"lbp_{k}"] = float(v)
+    return extra
+
+
+def extrair_features_v2(img):
+    return {**extrair_features(img), **extrair_features_extra(img)}
+
+
+FEAT_NAMES_V2 = list(extrair_features_v2(img_original).keys())
+print(f"{len(FEAT_NAMES_V2)} features agora (eram {len(FEAT_NAMES)})")
+
+# %%
+# Re-extrai features (base + grade + LBP) de todo o dataset
+registros_v2, y2 = [], []
+for _, row in tqdm(df.iterrows(), total=df.shape[0]):
+    img = cv2.imread(str(DATA_DIR / row["image_filepath"]), cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        continue
+    registros_v2.append(extrair_features_v2(img))
+    y2.append(row["anomaly_class"])
+
+X2 = np.array([[r[k] for k in FEAT_NAMES_V2] for r in registros_v2])
+y2 = np.array(y2)
+
+# %%
+# Re-treina o RandomForest com as novas features e compara com o baseline
+X2_tr, X2_te, y2_tr, y2_te = train_test_split(X2, y2, test_size=0.3, random_state=42, stratify=y2)
+clf_v2 = RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=42, n_jobs=-1)
+clf_v2.fit(X2_tr, y2_tr)
+pred_v2 = clf_v2.predict(X2_te)
+
+print(f"RF base ({len(FEAT_NAMES)} features)    — acuracia: {accuracy_score(y_te, pred) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred, average='macro') * 100:.1f}%")
+print(f"RF +grade+LBP ({len(FEAT_NAMES_V2)} feat) — acuracia: {accuracy_score(y2_te, pred_v2) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y2_te, pred_v2, average='macro') * 100:.1f}%")
+
+# %% [markdown]
+# ## 13. Impacto por classe (F1: base vs +grade+LBP)
+#
+# Mostra em quais classes as novas features ajudaram (delta positivo) ou atrapalharam.
+
+# %%
+f1_base = f1_score(y_te, pred, average=None, labels=classes)
+f1_v2 = f1_score(y2_te, pred_v2, average=None, labels=classes)
+tab_delta = pd.DataFrame({"F1_base": f1_base, "F1_v2": f1_v2}, index=classes).round(2)
+tab_delta["delta"] = (tab_delta["F1_v2"] - tab_delta["F1_base"]).round(2)
+print(tab_delta.sort_values("delta", ascending=False))
+
+# %% [markdown]
+# ## 14. Agrupar Diode + Diode-Multi
+#
+# `Diode` (aquece ~1/3 do módulo) e `Diode-Multi` (~2/3) são o mesmo defeito em graus
+# diferentes, e o modelo os confunde muito. Juntamos os dois numa classe `Diode` e
+# medimos o impacto. Usa as features v2 (grade + LBP). Vira um problema de **11 classes**.
+
+# %%
+# Remapeia os rotulos: Diode-Multi -> Diode
+y_grp = np.where(y2 == "Diode-Multi", "Diode", y2)
+classes_grp = sorted(set(y_grp))
+
+Xg_tr, Xg_te, yg_tr, yg_te = train_test_split(X2, y_grp, test_size=0.3, random_state=42, stratify=y_grp)
+clf_grp = RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=42, n_jobs=-1)
+clf_grp.fit(Xg_tr, yg_tr)
+pred_grp = clf_grp.predict(Xg_te)
+
+print(f"v2 (12 classes)           — acuracia: {accuracy_score(y2_te, pred_v2) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y2_te, pred_v2, average='macro') * 100:.1f}%")
+print(f"v2 + Diode agrupado (11)  — acuracia: {accuracy_score(yg_te, pred_grp) * 100:.1f}% | "
+      f"F1 macro: {f1_score(yg_te, pred_grp, average='macro') * 100:.1f}%")
+
+# %%
+# F1 por classe nos 3 estagios: base -> v2 -> agrupado (delta = impacto real)
+f1_grp = f1_score(yg_te, pred_grp, average=None, labels=classes_grp)
+s_base = pd.Series(f1_base, index=classes)
+s_v2 = pd.Series(f1_v2, index=classes)
+s_grp = pd.Series(f1_grp, index=classes_grp)
+
+tab_total = pd.DataFrame({
+    "F1_base": s_base.reindex(classes_grp),
+    "F1_v2": s_v2.reindex(classes_grp),
+    "F1_grp": s_grp,
+})
+tab_total["d_vs_v2"] = (tab_total["F1_grp"] - tab_total["F1_v2"]).round(2)
+tab_total["d_vs_base"] = (tab_total["F1_grp"] - tab_total["F1_base"]).round(2)
+print(tab_total.round(2).sort_values("d_vs_base", ascending=False))
+print("\nNota: linha Diode no base/v2 usa so o Diode original (Diode-Multi estava")
+print("separado com F1 0.28/0.16); na fusao os dois viram uma classe so.")
