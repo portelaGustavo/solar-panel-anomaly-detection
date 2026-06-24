@@ -516,3 +516,38 @@ tab_total["d_vs_base"] = (tab_total["F1_grp"] - tab_total["F1_base"]).round(2)
 print(tab_total.round(2).sort_values("d_vs_base", ascending=False))
 print("\nNota: linha Diode no base/v2 usa so o Diode original (Diode-Multi estava")
 print("separado com F1 0.28/0.16); na fusao os dois viram uma classe so.")
+
+# %% [markdown]
+# ## 15. Agrupar também Hot-Spot + Hot-Spot-Multi
+#
+# Mesma lógica do Diode: `Hot-Spot` e `Hot-Spot-Multi` são o mesmo defeito (ponto
+# quente em filme fino) em grau diferente, e o modelo os confunde. Agrupamos os dois,
+# em cima do agrupamento do Diode → problema de **10 classes**. Mede o impacto acumulado.
+
+# %%
+# Remapeia: Diode-Multi -> Diode (ja feito) e agora Hot-Spot-Multi -> Hot-Spot
+y_grp2 = np.where(y_grp == "Hot-Spot-Multi", "Hot-Spot", y_grp)
+classes_grp2 = sorted(set(y_grp2))
+
+Xh_tr, Xh_te, yh_tr, yh_te = train_test_split(X2, y_grp2, test_size=0.3, random_state=42, stratify=y_grp2)
+clf_grp2 = RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=42, n_jobs=-1)
+clf_grp2.fit(Xh_tr, yh_tr)
+pred_grp2 = clf_grp2.predict(Xh_te)
+
+print(f"v2 (12 classes)                 — acuracia: {accuracy_score(y2_te, pred_v2) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y2_te, pred_v2, average='macro') * 100:.1f}%")
+print(f"+ Diode agrupado (11 classes)   — acuracia: {accuracy_score(yg_te, pred_grp) * 100:.1f}% | "
+      f"F1 macro: {f1_score(yg_te, pred_grp, average='macro') * 100:.1f}%")
+print(f"+ Hot-Spot agrupado (10 classes)— acuracia: {accuracy_score(yh_te, pred_grp2) * 100:.1f}% | "
+      f"F1 macro: {f1_score(yh_te, pred_grp2, average='macro') * 100:.1f}%")
+
+# %%
+# F1 por classe no cenario de 10 classes
+f1_grp2 = f1_score(yh_te, pred_grp2, average=None, labels=classes_grp2)
+tab_grp2 = pd.DataFrame({"F1": f1_grp2}, index=classes_grp2).round(2)
+print(tab_grp2.sort_values("F1", ascending=False))
+hs_antes = f1_score(yg_te, pred_grp, average=None, labels=classes_grp)
+hs_idx = classes_grp.index("Hot-Spot") if "Hot-Spot" in classes_grp else None
+print(f"\nHot-Spot antes da fusao  -> Hot-Spot: {hs_antes[hs_idx]:.2f}, "
+      f"Hot-Spot-Multi: separado")
+print(f"Hot-Spot depois da fusao -> {tab_grp2.loc['Hot-Spot', 'F1']:.2f}")
