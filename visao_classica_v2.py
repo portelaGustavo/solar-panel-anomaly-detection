@@ -85,7 +85,10 @@ def extrair_features(img):
     }
 
 # %%
-BASE_DIR = Path(__file__).resolve().parent
+try:
+    BASE_DIR = Path(__file__).resolve().parent
+except NameError:  # rodando em notebook (Jupyter/Colab): __file__ nao existe
+    BASE_DIR = Path.cwd()
 DATA_DIR = BASE_DIR / "InfraredSolarModules"
 OUT_DIR = BASE_DIR / "outputs"
 OUT_DIR.mkdir(exist_ok=True)
