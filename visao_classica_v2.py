@@ -14,13 +14,16 @@
 # %% [markdown]
 # # Visão Clássica v2 — Detecção de Anomalias em Painéis Solares
 #
-# Nossa versão do método clássico (sem deep learning). Em relação à v1, acrescentamos:
+# Classificação de anomalias em painéis solares por visão computacional clássica
+# (sem deep learning). O pipeline:
 #
-# 1. **Features ricas** por imagem (intensidade, forma da região quente, bordas,
-#    textura, simetria, histograma) — não só a área do maior blob.
-# 2. **Classificador treinado** (RandomForest) sobre essas features, no lugar de
-#    regras `if/else` na mão.
-# 3. **Métricas por classe** (precision/recall/F1) e comparação regra-manual vs ML.
+# 1. **Pré-processamento e visualização** das imagens infravermelhas (24x40 px).
+# 2. **Extração de features** por imagem: intensidade, forma da região quente
+#    (limiar Otsu), bordas (Canny), textura (gradiente Sobel), simetria e histograma.
+# 3. **Classificação** com RandomForest treinado sobre essas features, comparado
+#    a uma regra manual como baseline.
+# 4. **Avaliação** por classe (precision/recall/F1), matriz de confusão e importância
+#    das features.
 #
 # Tudo roda em CPU (não precisa de GPU). Imagens aparecem inline a cada etapa.
 
@@ -139,7 +142,7 @@ plt.show()
 # %% [markdown]
 # ## 5. Extração de features
 #
-# A v1 usava só a área do maior blob. Aqui extraímos **~25 features** por imagem,
+# Aqui extraímos **~25 features** por imagem,
 # cobrindo vários tipos de anomalia (não só ponto quente):
 #
 # - **Intensidade**: média, desvio, máx, mín, percentil 90
