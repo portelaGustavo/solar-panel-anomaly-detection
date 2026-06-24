@@ -137,7 +137,7 @@ plt.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 5. Extração de features (nossa adição #2)
+# ## 5. Extração de features
 #
 # A v1 usava só a área do maior blob. Aqui extraímos **~25 features** por imagem,
 # cobrindo vários tipos de anomalia (não só ponto quente):
@@ -247,7 +247,7 @@ y = np.array(y)
 print("X:", X.shape, "| y:", y.shape)
 
 # %% [markdown]
-# ## 7. Baseline: regra manual (o que tínhamos antes)
+# ## 7. Baseline: regra manual
 #
 # Regra `if/else` na mão, para comparar com o classificador treinado.
 
@@ -274,7 +274,7 @@ print(f"Baseline regra manual — acuracia: {accuracy_score(y, y_regra) * 100:.1
       f"F1 macro: {f1_score(y, y_regra, average='macro') * 100:.1f}%")
 
 # %% [markdown]
-# ## 8. Classificador treinado: RandomForest (nossa adição #1)
+# ## 8. Classificador treinado: RandomForest
 #
 # Treina sobre as features. `class_weight='balanced'` compensa o desbalanceamento.
 # Split estratificado 70/30.
