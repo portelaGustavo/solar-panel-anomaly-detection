@@ -31,6 +31,8 @@ Original reporta ~67%. Pendencias dos autores: pesos por classe, reprodutibilida
 
 # %%
 import os
+import urllib.request
+import zipfile
 from pathlib import Path
 
 # %%
@@ -56,6 +58,23 @@ MODELS_DIR = BASE_DIR / "models"
 OUT_DIR.mkdir(exist_ok=True)
 MODELS_DIR.mkdir(exist_ok=True)
 
+DATASET_URL = "https://github.com/RaptorMaps/InfraredSolarModules/raw/master/2020-02-14_InfraredSolarModules.zip"
+
+
+def garantir_dataset():
+    """Baixa e extrai o dataset se faltar. Python puro (sem !wget/!unzip), local + Colab."""
+    if (DATA_DIR / "module_metadata.json").exists():
+        return
+    zip_path = BASE_DIR / "2020-02-14_InfraredSolarModules.zip"
+    if not zip_path.exists():
+        print(f"Baixando dataset de {DATASET_URL} ...")
+        urllib.request.urlretrieve(DATASET_URL, zip_path)
+    print("Extraindo dataset ...")
+    with zipfile.ZipFile(zip_path) as z:
+        z.extractall(BASE_DIR)
+    print(f"Dataset pronto em {DATA_DIR}")
+
+
 # %%
 EPOCHS_FROZEN = int(os.environ.get("EPOCHS_FROZEN", "4"))
 EPOCHS_FINETUNE = int(os.environ.get("EPOCHS_FINETUNE", "10"))
@@ -73,6 +92,7 @@ def save_fig(name):
 
 # %%
 def carregar_dados_balanceados():
+    garantir_dataset()
     with open(DATA_DIR / "module_metadata.json", "r") as f:
         metadados = json.load(f)
     df = pd.DataFrame.from_dict(metadados, orient="index")
@@ -98,13 +118,7 @@ def carregar_dados_balanceados():
 
 # %%
 def main():
-    if not (DATA_DIR / "module_metadata.json").exists():
-        raise SystemExit(
-            f"Dataset nao encontrado em {DATA_DIR}. "
-            "Extraia ../InfraredSolarModules/2020-02-14_InfraredSolarModules.zip para esta pasta "
-            "(ou, no Colab, baixe via !wget)."
-        )
-
+    garantir_dataset()
     set_seed(42, reproducible=True)
     df = carregar_dados_balanceados()
 

@@ -28,6 +28,8 @@ Pipeline: threshold -> morphology -> contours -> largest-blob-area heuristic.
 # %%
 import json
 import os
+import urllib.request
+import zipfile
 from pathlib import Path
 
 # %%
@@ -93,6 +95,27 @@ DATA_DIR = BASE_DIR / "InfraredSolarModules"
 OUT_DIR = BASE_DIR / "outputs"
 OUT_DIR.mkdir(exist_ok=True)
 
+DATASET_URL = "https://github.com/RaptorMaps/InfraredSolarModules/raw/master/2020-02-14_InfraredSolarModules.zip"
+
+
+# %%
+def garantir_dataset():
+    """Baixa e extrai o dataset se ainda nao estiver presente.
+
+    Substitui os magics !wget/!unzip do Colab por Python puro, entao funciona
+    igual no local e no Colab. Se o dataset ja existe (ex.: local), nao faz nada.
+    """
+    if (DATA_DIR / "module_metadata.json").exists():
+        return
+    zip_path = BASE_DIR / "2020-02-14_InfraredSolarModules.zip"
+    if not zip_path.exists():
+        print(f"Baixando dataset de {DATASET_URL} ...")
+        urllib.request.urlretrieve(DATASET_URL, zip_path)
+    print("Extraindo dataset ...")
+    with zipfile.ZipFile(zip_path) as z:
+        z.extractall(BASE_DIR)
+    print(f"Dataset pronto em {DATA_DIR}")
+
 
 # %%
 def save_fig(name):
@@ -103,6 +126,7 @@ def save_fig(name):
 
 # %%
 def load_metadata():
+    garantir_dataset()
     with open(DATA_DIR / "module_metadata.json", "r") as f:
         metadados = json.load(f)
     df = pd.DataFrame.from_dict(metadados, orient="index")
@@ -247,11 +271,7 @@ def avaliar_dataset(df):
 
 # %%
 def main():
-    if not (DATA_DIR / "module_metadata.json").exists():
-        raise SystemExit(
-            f"Dataset nao encontrado em {DATA_DIR}. "
-            "Extraia ../InfraredSolarModules/2020-02-14_InfraredSolarModules.zip para esta pasta."
-        )
+    garantir_dataset()
     df = load_metadata()
     for classe in ["No-Anomaly", "Hot-Spot", "Offline-Module", "Cell"]:
         visualizar_amostras(df, classe, num_amostras=5)
