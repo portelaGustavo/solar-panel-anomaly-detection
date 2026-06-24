@@ -11,59 +11,43 @@
 #       jupytext_version: 1.19.4
 # ---
 
-# %%
-"""Deep Learning (ResNet34 / fastai) — NOSSA versao (v2).
+# %% [markdown]
+# # Visão Deep Learning v2 — ResNet34 (fastai)
+#
+# Nossa versão do método de IA. Mesma receita do colega (ResNet34, transfer
+# learning), mas roda no Colab e no local, com download automático do dataset.
+#
+# **Use GPU no Colab**: Ambiente de execução → Alterar tipo → GPU (T4).
+# As imagens (batch, lr_find, matriz de confusão, top losses) aparecem inline.
 
-Port local-rodavel do notebook original do colega (visao_deep_learning_4.ipynb).
-Mantido separado do original para comparacao. Edite aqui localmente; para treinar
-na GPU, de push e rode o .ipynb pareado no Google Colab (git pull).
-
-Mudancas vs original:
-  - Sem magics de Colab (!wget / !unzip / !pip). Le o dataset da pasta local
-    ``InfraredSolarModules/`` ao lado deste arquivo.
-  - Figuras salvas em ``outputs/`` e pesos em ``models/``.
-  - Hiperparametros via env var para teste rapido em CPU:
-      EPOCHS_FROZEN / EPOCHS_FINETUNE / IMG_SIZE / SAMPLE_N
-    Ex.: EPOCHS_FROZEN=1 EPOCHS_FINETUNE=1 IMG_SIZE=128 SAMPLE_N=600 python visao_deep_learning_v2.py
-
-Original reporta ~67%. Pendencias dos autores: pesos por classe, reprodutibilidade.
-"""
+# %% [markdown]
+# ## 1. Setup e download do dataset
+#
+# Baixa e extrai em Python puro (sem `!wget`/`!unzip`). Pula se já existe.
 
 # %%
-import os
+import json
 import urllib.request
 import zipfile
 from pathlib import Path
 
-# %%
-import matplotlib
-if not os.environ.get("DISPLAY"):
-    matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import json
 import pandas as pd
 from fastai.vision.all import (
     ImageDataLoaders, Resize, aug_transforms, vision_learner, resnet34,
     accuracy, ClassificationInterpretation, set_seed,
 )
 
-# %%
 try:
     BASE_DIR = Path(__file__).resolve().parent
-except NameError:  # rodando em notebook (Jupyter/Colab): __file__ nao existe
+except NameError:  # notebook (Jupyter/Colab): __file__ nao existe
     BASE_DIR = Path.cwd()
 DATA_DIR = BASE_DIR / "InfraredSolarModules"
-OUT_DIR = BASE_DIR / "outputs"
-MODELS_DIR = BASE_DIR / "models"
-OUT_DIR.mkdir(exist_ok=True)
-MODELS_DIR.mkdir(exist_ok=True)
-
 DATASET_URL = "https://github.com/RaptorMaps/InfraredSolarModules/raw/master/2020-02-14_InfraredSolarModules.zip"
 
 
 def garantir_dataset():
-    """Baixa e extrai o dataset se faltar. Python puro (sem !wget/!unzip), local + Colab."""
     if (DATA_DIR / "module_metadata.json").exists():
+        print(f"Dataset ja presente em {DATA_DIR}")
         return
     zip_path = BASE_DIR / "2020-02-14_InfraredSolarModules.zip"
     if not zip_path.exists():
@@ -75,93 +59,94 @@ def garantir_dataset():
     print(f"Dataset pronto em {DATA_DIR}")
 
 
-# %%
-EPOCHS_FROZEN = int(os.environ.get("EPOCHS_FROZEN", "4"))
-EPOCHS_FINETUNE = int(os.environ.get("EPOCHS_FINETUNE", "10"))
-IMG_SIZE = int(os.environ.get("IMG_SIZE", "224"))          # menor = mais rapido (ex.: 128)
-SAMPLE_N = int(os.environ.get("SAMPLE_N", "0"))            # 0 = dataset inteiro; >0 = subconjunto p/ teste
+garantir_dataset()
 
-
-# %%
-def save_fig(name):
-    path = OUT_DIR / name
-    plt.savefig(path, bbox_inches="tight", dpi=120)
-    print(f"[saved] {path}")
-    plt.close()
-
+# %% [markdown]
+# ## 2. Leitura, consolidação de classes e balanceamento
+#
+# - Consolida classes redundantes (`Cell-Multi`→`Cell`, etc.).
+# - Reduz `No-Anomaly` para 1800 imagens (era metade do dataset) e mantém o resto.
 
 # %%
-def carregar_dados_balanceados():
-    garantir_dataset()
-    with open(DATA_DIR / "module_metadata.json", "r") as f:
-        metadados = json.load(f)
-    df = pd.DataFrame.from_dict(metadados, orient="index")
+with open(DATA_DIR / "module_metadata.json", "r") as f:
+    metadados = json.load(f)
+df = pd.DataFrame.from_dict(metadados, orient="index")
 
-    # Consolida classes redundantes
-    substituicoes = {"Cell-Multi": "Cell", "Diode-Multi": "Diode", "Hot-Spot-Multi": "Hot-Spot"}
-    df["anomaly_class"] = df["anomaly_class"].replace(substituicoes)
+substituicoes = {"Cell-Multi": "Cell", "Diode-Multi": "Diode", "Hot-Spot-Multi": "Hot-Spot"}
+df["anomaly_class"] = df["anomaly_class"].replace(substituicoes)
 
-    # Balanceamento: reduz No-Anomaly para 1800, mantem o resto
-    df_no_anomaly = df[df["anomaly_class"] == "No-Anomaly"].sample(n=1800, random_state=42)
-    df_anomalias = df[df["anomaly_class"] != "No-Anomaly"]
-    df_bal = pd.concat([df_no_anomaly, df_anomalias]).sample(frac=1, random_state=42).reset_index(drop=True)
+df_no_anomaly = df[df["anomaly_class"] == "No-Anomaly"].sample(n=1800, random_state=42)
+df_anomalias = df[df["anomaly_class"] != "No-Anomaly"]
+df = pd.concat([df_no_anomaly, df_anomalias]).sample(frac=1, random_state=42).reset_index(drop=True)
 
-    if SAMPLE_N > 0:
-        df_bal = df_bal.sample(n=min(SAMPLE_N, len(df_bal)), random_state=42).reset_index(drop=True)
-        print(f"[teste] usando subconjunto de {len(df_bal)} imagens")
+print(df.head())
+print("\n--- CONTAGEM DE CLASSES ---")
+print(df["anomaly_class"].value_counts())
 
-    print(df_bal.head())
-    print("\n--- CONTAGEM DE CLASSES ---")
-    print(df_bal["anomaly_class"].value_counts())
-    return df_bal
-
+# %% [markdown]
+# ## 3. DataLoaders e visualização do batch
+#
+# Redimensiona para 224x224 e aplica flip. Mostra um batch já processado.
 
 # %%
-def main():
-    garantir_dataset()
-    set_seed(42, reproducible=True)
-    df = carregar_dados_balanceados()
+set_seed(42, reproducible=True)
+dls = ImageDataLoaders.from_df(
+    df,
+    path=str(DATA_DIR),
+    fn_col="image_filepath",
+    label_col="anomaly_class",
+    item_tfms=Resize(224),
+    batch_tfms=aug_transforms(do_flip=True, max_rotate=0.0, max_lighting=0.0, max_warp=0.0),
+)
+dls.show_batch()
 
-    dls = ImageDataLoaders.from_df(
-        df,
-        path=str(DATA_DIR),
-        fn_col="image_filepath",
-        label_col="anomaly_class",
-        item_tfms=Resize(IMG_SIZE),
-        batch_tfms=aug_transforms(do_flip=True, max_rotate=0.0, max_lighting=0.0, max_warp=0.0),
-    )
-    dls.show_batch()
-    save_fig("dl_batch.png")
-
-    # Treinamento inicial (backbone congelado)
-    learn = vision_learner(dls, resnet34, metrics=accuracy, path=BASE_DIR, model_dir=MODELS_DIR)
-    learn.fit_one_cycle(EPOCHS_FROZEN)
-    learn.save("modelo-resnet34-etapa1")
-
-    # lr_find para escolher a faixa de aprendizado do fine tuning
-    learn.unfreeze()
-    learn.lr_find()
-    save_fig("dl_lr_find.png")
-
-    # Fine tuning com learning rate discriminativo
-    learn.load("modelo-resnet34-etapa1")
-    learn.unfreeze()
-    learn.fit_one_cycle(EPOCHS_FINETUNE, lr_max=slice(1e-5, 1e-3))
-
-    learn.show_results(max_n=9, figsize=(10, 10))
-    save_fig("dl_resultados.png")
-
-    interp = ClassificationInterpretation.from_learner(learn)
-    interp.plot_confusion_matrix(figsize=(7, 7))
-    save_fig("dl_matriz_confusao.png")
-
-    interp.plot_top_losses(k=9, figsize=(15, 11))
-    save_fig("dl_top_losses.png")
-
-    learn.export(MODELS_DIR / "modelo_termografico_final.pkl")
-    print(f"[saved] {MODELS_DIR / 'modelo_termografico_final.pkl'}")
-
+# %% [markdown]
+# ## 4. Treinamento inicial (backbone congelado)
+#
+# ResNet34 pré-treinada, treina só a cabeça por 4 épocas.
 
 # %%
-if __name__ == "__main__":
-    main()
+learn = vision_learner(dls, resnet34, metrics=accuracy)
+learn.fit_one_cycle(4)
+learn.save("modelo-resnet34-etapa1")
+
+# %% [markdown]
+# ## 5. `lr_find` — melhor faixa de learning rate
+#
+# Descongela a rede e procura a faixa de aprendizado para o fine tuning.
+
+# %%
+learn.unfreeze()
+learn.lr_find()
+
+# %% [markdown]
+# ## 6. Fine tuning com learning rate discriminativo
+#
+# Treina a rede inteira por 10 épocas, LR menor nas camadas iniciais.
+
+# %%
+learn.load("modelo-resnet34-etapa1")
+learn.unfreeze()
+learn.fit_one_cycle(10, lr_max=slice(1e-5, 1e-3))
+
+# %% [markdown]
+# ## 7. Resultados: previsões, matriz de confusão e top losses
+
+# %%
+learn.show_results(max_n=9, figsize=(10, 10))
+
+# %%
+interp = ClassificationInterpretation.from_learner(learn)
+interp.plot_confusion_matrix(figsize=(7, 7))
+
+# %%
+interp.plot_top_losses(k=9, figsize=(15, 11))
+
+# %% [markdown]
+# ## 8. Exporta o modelo final
+#
+# Salva arquitetura + pesos em `.pkl` para inferência depois.
+
+# %%
+learn.export(BASE_DIR / "modelo_termografico_final.pkl")
+print("Modelo exportado.")
