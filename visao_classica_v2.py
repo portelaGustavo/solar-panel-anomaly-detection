@@ -340,3 +340,61 @@ for ax, (_, r) in zip(axes.ravel(), amostra_pred.iterrows()):
     ax.axis("off")
 plt.tight_layout()
 plt.show()
+
+# %% [markdown]
+# ## 10. Comparação de classificadores: RandomForest vs Gradient Boosting vs SVM
+#
+# Treinamos três classificadores sobre as **mesmas features** e o mesmo split, para
+# ver qual separa melhor:
+#
+# - **RandomForest**: floresta de árvores por votação (bagging).
+# - **Gradient Boosting** (`HistGradientBoosting`): árvores em sequência, cada uma
+#   corrige o erro da anterior. Costuma ser forte em features tabulares.
+# - **SVM**: busca a fronteira de maior margem entre as classes. Precisa de features
+#   **normalizadas** (por isso vai num pipeline com `StandardScaler`).
+#
+# Todos com balanceamento de classes (o dataset é desbalanceado).
+
+# %%
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.svm import SVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_sample_weight
+
+modelos = {
+    "RF": RandomForestClassifier(
+        n_estimators=300, class_weight="balanced", random_state=42, n_jobs=-1),
+    "GB": HistGradientBoostingClassifier(random_state=42),
+    "SVM": make_pipeline(StandardScaler(), SVC(class_weight="balanced", random_state=42)),
+}
+
+resultados = []
+preds = {}
+for nome, modelo in modelos.items():
+    if nome == "GB":  # balanceia via sample_weight
+        modelo.fit(X_tr, y_tr, sample_weight=compute_sample_weight("balanced", y_tr))
+    else:
+        modelo.fit(X_tr, y_tr)
+    p = modelo.predict(X_te)
+    preds[nome] = p
+    resultados.append({
+        "modelo": nome,
+        "acuracia": accuracy_score(y_te, p) * 100,
+        "f1_macro": f1_score(y_te, p, average="macro") * 100,
+    })
+
+tabela = pd.DataFrame(resultados).set_index("modelo").round(1)
+print(tabela)
+
+# %% [markdown]
+# ## 11. Desempenho por classe de cada modelo
+#
+# F1-score de cada classe em cada modelo. A coluna `melhor` aponta qual modelo vence
+# naquela classe. Assim dá para ver onde cada método é forte e onde é fraco.
+
+# %%
+f1_por_classe = {nome: f1_score(y_te, p, average=None, labels=classes) for nome, p in preds.items()}
+tab_f1 = pd.DataFrame(f1_por_classe, index=classes).round(2)
+tab_f1["melhor"] = tab_f1.idxmax(axis=1)
+print(tab_f1)
