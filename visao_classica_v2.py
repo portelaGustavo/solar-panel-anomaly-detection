@@ -203,9 +203,24 @@ def extrair_features(img):
     }
 
 
-# Demonstra as features numa imagem
-print("Features da amostra acima:")
-for k, v in extrair_features(img_original).items():
+# %%
+# Mostra a mascara de pixels quentes (base das features) numa amostra
+amostra_feat = df[df["anomaly_class"] == "Hot-Spot-Multi"].sample(1).iloc[0]
+img_feat = cv2.imread(str(DATA_DIR / amostra_feat["image_filepath"]), cv2.IMREAD_GRAYSCALE)
+_, hot = cv2.threshold(img_feat, HOT_FLOOR, 255, cv2.THRESH_BINARY)
+hot = cv2.morphologyEx(hot, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+
+fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+axes[0].imshow(img_feat, cmap="gray", vmin=0, vmax=255)
+axes[0].set_title(f"Original ({amostra_feat['anomaly_class']})")
+axes[0].axis("off")
+axes[1].imshow(hot, cmap="gray")
+axes[1].set_title("Mascara quente")
+axes[1].axis("off")
+plt.show()
+
+print("Features dessa imagem:")
+for k, v in extrair_features(img_feat).items():
     print(f"  {k:14s} = {v}")
 
 # %% [markdown]
@@ -231,6 +246,21 @@ def classificar(f):
     if f["num_blobs"] >= 2:
         return "Cell-Multi"
     return "Cell"
+
+
+# %%
+# Regra em acao: amostras aleatorias com classe real vs prevista (verde = acerto)
+amostra_pred = df.sample(8, random_state=0)
+fig, axes = plt.subplots(2, 4, figsize=(14, 6))
+for ax, (_, r) in zip(axes.ravel(), amostra_pred.iterrows()):
+    img = cv2.imread(str(DATA_DIR / r["image_filepath"]), cv2.IMREAD_GRAYSCALE)
+    pred = classificar(extrair_features(img))
+    cor = "green" if pred == r["anomaly_class"] else "red"
+    ax.imshow(img, cmap="gray", vmin=0, vmax=255)
+    ax.set_title(f"real: {r['anomaly_class']}\nprev: {pred}", color=cor, fontsize=9)
+    ax.axis("off")
+plt.tight_layout()
+plt.show()
 
 
 # %% [markdown]
