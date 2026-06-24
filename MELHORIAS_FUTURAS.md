@@ -1,9 +1,21 @@
 # Melhorias Futuras — Visão Clássica
 
 Ideias para melhorar o desempenho do método clássico (features + classificador).
-Ordenadas por impacto esperado. Estado atual: **RandomForest ~62% acc / 42% F1 macro**
-com 25 features (DL de referência ~67%). Gargalo = classes raras (support baixo) e
-classes não-térmicas (Shadowing, Vegetation, Soiling, Cracking).
+Ordenadas por impacto esperado. DL de referência ~67%. Gargalo = classes raras
+(support baixo) e classes não-térmicas (Shadowing, Vegetation, Soiling, Cracking).
+
+## Já implementado (progresso)
+
+| Estágio | Acurácia | F1 macro |
+|---------|----------|----------|
+| Regra manual (baseline) | ~32% | ~10% |
+| RandomForest, 25 features | 61.9% | 41.9% |
+| + features grade 3x3 + LBP (44 feat) | 65.1% | 43.3% |
+| + agrupar Diode + Diode-Multi (11 classes) | 66.7% | 46.7% |
+| + agrupar Hot-Spot + Hot-Spot-Multi (10 classes) | 67.3% | 50.5% |
+
+Feito também: comparação RF vs GradientBoosting vs SVM (RF ganhou); GridSearchCV
+(sem ganho, removido). As ideias abaixo ainda **não** foram implementadas.
 
 ## A. Melhorar precisão
 
@@ -12,8 +24,8 @@ As features são o limite, não o modelo. Faltam sinais para as classes difícei
 
 | Feature | Pega qual classe |
 |---------|------------------|
-| **Grade espacial** (dividir imagem em 3x3, intensidade por célula) | **Diode** (aquece o terço de baixo) — informa *onde* está o calor |
-| **LBP** (Local Binary Patterns) | textura → **Soiling** |
+| ~~**Grade espacial** (3x3, intensidade por célula)~~ ✅ feito | **Diode** — informa *onde* está o calor |
+| ~~**LBP** (Local Binary Patterns)~~ ✅ feito | textura → **Soiling** |
 | **HOG** / histograma de orientação de gradiente | trincas, formas |
 | **Filtros de Gabor** | textura direcional |
 | **Momentos de Hu** do maior blob | geometria da mancha quente |
@@ -35,8 +47,8 @@ As features são o limite, não o modelo. Faltam sinais para as classes difícei
 ### 4. Estratégia de classes (alto impacto, baixo custo)
 - **Classificação em duas etapas**: 1º `anomalia vs No-Anomaly`, depois `qual tipo`.
   Tira o peso da classe gigante.
-- **Agrupar** classes raras parecidas (`Hot-Spot` + `Hot-Spot-Multi`,
-  `Diode` + `Diode-Multi`) → menos classes, mais amostras por classe, F1 sobe.
+- ~~**Agrupar** classes raras parecidas (`Hot-Spot`+`Hot-Spot-Multi`, `Diode`+`Diode-Multi`)~~
+  ✅ feito → F1 macro subiu de 43% para 50%. (Resta avaliar agrupar mais, ex.: `Cell`+`Cell-Multi`.)
 
 ### 5. Modelo
 - **XGBoost / LightGBM** (costuma superar RF / HistGradientBoosting com tuning).
