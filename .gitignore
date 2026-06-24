@@ -221,3 +221,4 @@ __marimo__/
 InfraredSolarModules/
 *.pkl
 models/
+outputs/
