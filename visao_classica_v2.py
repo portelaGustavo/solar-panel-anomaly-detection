@@ -14,7 +14,7 @@
 # %% [markdown]
 # # Visão Clássica v2 — Detecção de Anomalias em Painéis Solares
 #
-# Nossa versão do método clássico (sem deep learning). Em relação à v1 do colega,
+# Nossa versão do método clássico (sem deep learning). Em relação à v1,
 # acrescentamos: **mais features térmicas**, **regra multiclasse** (não só 3 classes)
 # e **métricas por classe** (precision/recall/F1).
 #

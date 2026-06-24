@@ -14,7 +14,7 @@
 # %% [markdown]
 # # Visão Deep Learning v2 — ResNet34 (fastai)
 #
-# Nossa versão do método de IA. Mesma receita do colega (ResNet34, transfer
+# Nossa versão do método de IA. Mesma receita da v1 (ResNet34, transfer
 # learning), mas roda no Colab e no local, com download automático do dataset.
 #
 # **Use GPU no Colab**: Ambiente de execução → Alterar tipo → GPU (T4).
