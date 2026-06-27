@@ -409,3 +409,35 @@ plt.title("Importancia por permutacao (vermelho = atrapalha/inutil)")
 plt.xlabel("Queda no F1 macro ao embaralhar a feature")
 plt.tight_layout()
 plt.show()
+
+# %% [markdown]
+# ## 9. Remover as features candidatas e comparar
+#
+# Mantemos só as features com importância > 0 (removemos as ≤ 0) e re-treinamos o
+# XGBoost único. Comparamos desempenho geral e por classe vs o conjunto completo.
+#
+# *Obs.: a importância foi medida no mesmo conjunto de teste, então há um leve viés
+# otimista na seleção; serve como indicativo, não prova definitiva.*
+
+# %%
+manter = imp[imp["imp_mean"] > 0]["feature"].tolist()
+manter_idx = [FEAT_NAMES.index(f) for f in manter]
+X_tr_sel, X_te_sel = X_tr[:, manter_idx], X_te[:, manter_idx]
+print(f"Features: {len(FEAT_NAMES)} -> {len(manter)} (removidas {len(FEAT_NAMES) - len(manter)})")
+
+xgb_sel = make_xgb()
+xgb_sel.fit(X_tr_sel, le.transform(y_tr), sample_weight=compute_sample_weight("balanced", y_tr))
+pred_sel = le.inverse_transform(xgb_sel.predict(X_te_sel))
+
+print(f"\nXGB completo ({len(FEAT_NAMES)} feat)  — acuracia: {accuracy_score(y_te, pred_xgb_unico) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred_xgb_unico, average='macro') * 100:.1f}%")
+print(f"XGB reduzido ({len(manter)} feat) — acuracia: {accuracy_score(y_te, pred_sel) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred_sel, average='macro') * 100:.1f}%")
+
+# %%
+# Desempenho por classe: completo vs reduzido
+f1_full = f1_score(y_te, pred_xgb_unico, average=None, labels=classes)
+f1_sel = f1_score(y_te, pred_sel, average=None, labels=classes)
+tab_sel = pd.DataFrame({"F1_completo": f1_full, "F1_reduzido": f1_sel}, index=classes).round(2)
+tab_sel["delta"] = (tab_sel["F1_reduzido"] - tab_sel["F1_completo"]).round(2)
+print(tab_sel.sort_values("delta"))
