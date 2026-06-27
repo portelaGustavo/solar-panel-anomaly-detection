@@ -124,6 +124,16 @@ def extrair_features(img):
     f["row_cov"] = float((hot.sum(axis=1) > 0).mean())
     f["col_cov"] = float((hot.sum(axis=0) > 0).mean())
 
+    # Momentos de Hu do maior blob (forma invariante a escala/rotacao), log-transformados
+    hu = np.zeros(7)
+    if blobs:
+        mask = np.zeros_like(img)
+        cv2.drawContours(mask, [maior], -1, 255, -1)
+        huv = cv2.HuMoments(cv2.moments(mask)).flatten()
+        hu = np.array([-np.sign(v) * np.log10(abs(v) + 1e-30) for v in huv])
+    for i in range(7):
+        f[f"hu_{i}"] = float(hu[i])
+
     # Regiao escura, bordas, textura
     f["dark_fraction"] = float((img < (img.mean() - img.std())).mean())
     f["edge_density"] = float((cv2.Canny(img, 50, 150) > 0).mean())
