@@ -14,8 +14,17 @@ Ordenadas por impacto esperado. DL de referência ~67%. Gargalo = classes raras
 | + agrupar Diode + Diode-Multi (11 classes) | 66.7% | 46.7% |
 | + agrupar Hot-Spot + Hot-Spot-Multi (10 classes) | 67.3% | 50.5% |
 
+**v3 (12 classes, sem agrupamento, features + skew/kurtosis = 46):**
+
+| Config | Acurácia | F1 macro |
+|--------|----------|----------|
+| RF único | 64.8% | 44.3% |
+| RF duas etapas | 68.2% | 44.4% |
+| XGB duas etapas | 70.1% | 47.0% |
+| **XGB único** | **70.4%** | 46.6% |
+
 Feito também: comparação RF vs GradientBoosting vs SVM (RF ganhou); GridSearchCV
-(sem ganho, removido). As ideias abaixo ainda **não** foram implementadas.
+(sem ganho, removido). As demais ideias abaixo ainda **não** foram implementadas.
 
 ## A. Melhorar precisão
 
@@ -30,8 +39,8 @@ As features são o limite, não o modelo. Faltam sinais para as classes difícei
 | **Filtros de Gabor** | textura direcional |
 | **Momentos de Hu** do maior blob | geometria da mancha quente |
 | **connectedComponentsWithStats** | áreas / centróides / contagem por blob |
-| **Skewness / kurtosis** do histograma | forma da distribuição térmica |
-| **Contraste / razão quente-frio** | intensidade relativa |
+| ~~**Skewness / kurtosis** do histograma~~ ✅ usado (v3) | forma da distribuição → +1 a +2.7 F1 macro |
+| ~~**Contraste / razão quente-frio**~~ ❌ descartado | redundante com max/min/std/hot_fraction, ganho nulo |
 
 ### 2. Pré-processamento
 - **CLAHE** (equalização adaptativa de histograma) antes de extrair features → normaliza
@@ -45,13 +54,15 @@ As features são o limite, não o modelo. Faltam sinais para as classes difícei
 - **Data augmentation** térmico (flip / rotação) para gerar mais amostras das raras.
 
 ### 4. Estratégia de classes (alto impacto, baixo custo)
-- **Classificação em duas etapas**: 1º `anomalia vs No-Anomaly`, depois `qual tipo`.
-  Tira o peso da classe gigante.
+- ~~**Classificação em duas etapas**: 1º `anomalia vs No-Anomaly`, depois `qual tipo`~~
+  ✅ feito (v3) → +acurácia no RF, mas F1 macro ~igual; com XGBoost até piora. Gargalo = recall
+  da etapa 1 (~78%). Não compensou.
 - ~~**Agrupar** classes raras parecidas (`Hot-Spot`+`Hot-Spot-Multi`, `Diode`+`Diode-Multi`)~~
-  ✅ feito → F1 macro subiu de 43% para 50%. (Resta avaliar agrupar mais, ex.: `Cell`+`Cell-Multi`.)
+  ✅ feito (v2) → F1 macro subiu de 43% para 50%. (Resta avaliar agrupar mais, ex.: `Cell`+`Cell-Multi`.)
 
 ### 5. Modelo
-- **XGBoost / LightGBM** (costuma superar RF / HistGradientBoosting com tuning).
+- ~~**XGBoost / LightGBM**~~ ✅ usado (v3) → **melhor modelo**: XGB único 70.5% acc / ~47% F1 macro,
+  bateu RF e SVM. LightGBM ainda não testado.
 - **Ensemble** (stacking / voting) combinando RF + GB + SVM.
 
 ### 6. Seleção de features
