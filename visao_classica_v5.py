@@ -370,3 +370,53 @@ for i, real in enumerate(classes):
 conf = pd.DataFrame(pares).sort_values("pct_da_real", ascending=False)
 print("\nTop 15 confusoes (% da classe verdadeira):")
 print(conf.head(15).to_string(index=False))
+
+# %% [markdown]
+# ## 8. Agrupar classes irmãs e comparar
+#
+# As confusões mais fortes são entre pares "irmãos" (mesmo defeito, grau diferente):
+# `Diode`↔`Diode-Multi`, `Cell`↔`Cell-Multi`, `Hot-Spot`↔`Hot-Spot-Multi`. Agrupamos os
+# três pares (12 → 9 classes) e re-treinamos o XGBoost único.
+#
+# *Obs.: comparar 12 vs 9 classes não é maçã-com-maçã (problema fica mais fácil), mas é
+# justificável fisicamente e mostra o ganho de eliminar a confusão entre irmãos.*
+
+# %%
+substituicoes = {"Diode-Multi": "Diode", "Cell-Multi": "Cell", "Hot-Spot-Multi": "Hot-Spot"}
+y_grp = np.array([substituicoes.get(c, c) for c in y])
+classes_grp = sorted(set(y_grp))
+print(f"Classes: {len(classes)} -> {len(classes_grp)} ({classes_grp})")
+
+Xg_tr, Xg_te, yg_tr, yg_te = train_test_split(X, y_grp, test_size=0.3, random_state=42, stratify=y_grp)
+le_g = LabelEncoder().fit(y_grp)
+xgb_grp = make_xgb()
+xgb_grp.fit(Xg_tr, le_g.transform(yg_tr), sample_weight=compute_sample_weight("balanced", yg_tr))
+pred_grp = le_g.inverse_transform(xgb_grp.predict(Xg_te))
+
+print(f"\nXGB 12 classes — acuracia: {accuracy_score(y_te, pred_xgb_unico) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred_xgb_unico, average='macro') * 100:.1f}%")
+print(f"XGB 9 classes  — acuracia: {accuracy_score(yg_te, pred_grp) * 100:.1f}% | "
+      f"F1 macro: {f1_score(yg_te, pred_grp, average='macro') * 100:.1f}%\n")
+print("--- Relatorio por classe (9 classes agrupadas) ---")
+print(classification_report(yg_te, pred_grp, zero_division=0))
+
+# %%
+# F1 por classe no cenario agrupado, comparando os pares que foram fundidos
+f1_grp_arr = f1_score(yg_te, pred_grp, average=None, labels=classes_grp)
+f1_12 = pd.Series(f1_score(y_te, pred_xgb_unico, average=None, labels=classes), index=classes)
+print("Pares fundidos: F1 antes (separados) -> depois (juntos):")
+for base, multi in [("Cell", "Cell-Multi"), ("Diode", "Diode-Multi"), ("Hot-Spot", "Hot-Spot-Multi")]:
+    depois = dict(zip(classes_grp, f1_grp_arr))[base]
+    print(f"  {base:9s}: {f1_12[base]:.2f} + {multi:14s} {f1_12[multi]:.2f}  ->  {base} {depois:.2f}")
+
+# %%
+# Matriz de confusao do cenario agrupado (normalizada por coluna)
+matriz_grp = confusion_matrix(yg_te, pred_grp, labels=classes_grp, normalize="pred")
+plt.figure(figsize=(9, 7))
+sns.heatmap(matriz_grp, annot=True, fmt=".0%", cmap="Purples", vmin=0, vmax=1,
+            xticklabels=classes_grp, yticklabels=classes_grp)
+plt.title("Matriz de Confusao - XGB 9 classes agrupadas (por coluna)", fontsize=14)
+plt.ylabel("Classe Verdadeira")
+plt.xlabel("Previsao (coluna soma 100%)")
+plt.xticks(rotation=45, ha="right")
+plt.show()
