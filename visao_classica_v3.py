@@ -245,6 +245,21 @@ print(f"Etapa 2 treinada em {mask_anom_tr.sum()} imagens de anomalia, "
       f"{len(set(y_tr[mask_anom_tr]))} tipos.")
 
 # %% [markdown]
+# ### Etapa 2 isolada (portão perfeito)
+#
+# Avalia o classificador de tipo **só nas anomalias verdadeiras** do teste, ignorando a
+# etapa 1. Mostra a qualidade pura do classificador de tipo, como se o portão fosse perfeito.
+# A diferença para a etapa 7 (combinada) é o custo dos erros da etapa 1.
+
+# %%
+mask_anom_te = y_te != "No-Anomaly"
+pred_tipo_iso = clf_tipo.predict(X_te[mask_anom_te])
+print(f"Etapa 2 isolada — acuracia: {accuracy_score(y_te[mask_anom_te], pred_tipo_iso) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te[mask_anom_te], pred_tipo_iso, average='macro') * 100:.1f}%\n")
+print("--- Relatorio por tipo de anomalia (gate perfeito) ---")
+print(classification_report(y_te[mask_anom_te], pred_tipo_iso, zero_division=0))
+
+# %% [markdown]
 # ## 7. Predição combinada e avaliação
 #
 # Para cada imagem: se a etapa 1 diz `No-Anomaly`, fica `No-Anomaly`; senão, a etapa 2
@@ -261,12 +276,15 @@ print("--- Relatorio por classe (duas etapas) ---")
 print(classification_report(y_te, pred_final, zero_division=0))
 
 # %%
-matriz = confusion_matrix(y_te, pred_final, labels=classes)
+# Normalizada por coluna (precision): cada coluna soma 100% -> escala estavel,
+# No-Anomaly nao estoura mais o cmap.
+matriz = confusion_matrix(y_te, pred_final, labels=classes, normalize="pred")
 plt.figure(figsize=(11, 8))
-sns.heatmap(matriz, annot=True, fmt="d", cmap="Blues", xticklabels=classes, yticklabels=classes)
-plt.title("Matriz de Confusao - Duas etapas", fontsize=15)
+sns.heatmap(matriz, annot=True, fmt=".0%", cmap="Blues", vmin=0, vmax=1,
+            xticklabels=classes, yticklabels=classes)
+plt.title("Matriz de Confusao - Duas etapas (normalizada por coluna / precision)", fontsize=14)
 plt.ylabel("Classe Verdadeira")
-plt.xlabel("Previsao")
+plt.xlabel("Previsao (coluna soma 100%)")
 plt.xticks(rotation=45, ha="right")
 plt.show()
 
