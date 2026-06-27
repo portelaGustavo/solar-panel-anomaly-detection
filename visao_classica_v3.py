@@ -41,7 +41,8 @@ from scipy.stats import skew, kurtosis
 from skimage.feature import local_binary_pattern, hog
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score, recall_score
+from sklearn.metrics import (accuracy_score, classification_report, confusion_matrix, f1_score,
+                             precision_recall_curve, precision_score, recall_score)
 
 try:
     BASE_DIR = Path(__file__).resolve().parent
@@ -425,3 +426,56 @@ resumo = pd.DataFrame([
     metricas("XGB duas etapas", pred_xgb_final),
 ]).set_index("config")
 print(resumo.sort_values("f1_macro", ascending=False))
+
+# %% [markdown]
+# ## 11. Ajuste de limiar do detector de falha (etapa 1, XGB)
+#
+# A etapa 1 (anomalia vs No-Anomaly) é o resultado mais útil na prática: "este painel
+# precisa de inspeção?". Por padrão o limiar é 0.5, mas para **triagem** o que importa é
+# **recall** (não deixar falha passar). Aqui usamos a probabilidade do XGB binário e
+# escolhemos o ponto de operação que prioriza recall.
+
+# %%
+idx_anom = list(le_bin.classes_).index("Anomalia")
+proba_anom = xgb_bin.predict_proba(X_te)[:, idx_anom]
+y_true_bin = (y_bin_te == "Anomalia").astype(int)
+
+# Metricas em varios limiares
+print("limiar | recall | precision | (Anomalia)")
+for t in [0.50, 0.40, 0.30, 0.20, 0.10]:
+    pred_t = (proba_anom >= t).astype(int)
+    r = recall_score(y_true_bin, pred_t)
+    p = precision_score(y_true_bin, pred_t, zero_division=0)
+    print(f"  {t:.2f} |  {r*100:5.1f}% |   {p*100:5.1f}%")
+
+# Ponto de operacao: menor limiar com recall >= 95%
+prec, rec, thr = precision_recall_curve(y_true_bin, proba_anom)
+alvo = 0.95
+ok = np.where(rec[:-1] >= alvo)[0]
+if len(ok):
+    j = ok[-1]  # maior precision entre os que batem o recall alvo
+    print(f"\nPara recall >= {alvo*100:.0f}%: limiar ~{thr[j]:.2f} -> "
+          f"recall {rec[j]*100:.1f}%, precision {prec[j]*100:.1f}%")
+
+# %%
+# Curva precision-recall
+plt.figure(figsize=(7, 6))
+plt.plot(rec, prec, marker=".", ms=3)
+plt.title("Curva Precision-Recall - detector de falha (XGB etapa 1)")
+plt.xlabel("Recall (Anomalia)")
+plt.ylabel("Precision (Anomalia)")
+plt.grid(alpha=0.3)
+plt.show()
+
+# %%
+# Precision e recall vs limiar
+plt.figure(figsize=(8, 5))
+plt.plot(thr, prec[:-1], label="precision")
+plt.plot(thr, rec[:-1], label="recall")
+plt.axvline(0.5, color="gray", ls="--", lw=1, label="limiar padrao 0.5")
+plt.title("Precision e Recall vs limiar (detector de falha)")
+plt.xlabel("Limiar de decisao")
+plt.ylabel("Métrica")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
