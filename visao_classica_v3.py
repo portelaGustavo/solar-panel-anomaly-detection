@@ -312,11 +312,12 @@ tab["delta"] = (tab["F1_duas_etapas"] - tab["F1_unico"]).round(2)
 print(tab.sort_values("delta", ascending=False))
 
 # %% [markdown]
-# ## 9. Mesmo teste com XGBoost (único e duas etapas)
+# ## 9. Mesmo passo a passo com XGBoost
 #
-# Repetimos as duas abordagens trocando o RandomForest por **XGBoost** (boosting).
-# XGBoost precisa de rótulos numéricos (`LabelEncoder`) e usa `sample_weight` para
-# compensar o desbalanceamento (não tem `class_weight`).
+# Repetimos tudo trocando o RandomForest por **XGBoost** (boosting), com o mesmo
+# detalhamento do RF: etapa 1 binária, etapa 2 isolada, combinada (relatório + matriz)
+# e o modelo único. XGBoost precisa de rótulos numéricos (`LabelEncoder`) e usa
+# `sample_weight` para compensar o desbalanceamento (não tem `class_weight`).
 
 # %%
 from xgboost import XGBClassifier
@@ -329,32 +330,83 @@ def make_xgb():
                          tree_method="hist", random_state=42, n_jobs=-1, eval_metric="mlogloss")
 
 
-# --- XGBoost único (12 classes) ---
+# %% [markdown]
+# ### 9.1 XGBoost — Etapa 1: Anomalia vs No-Anomaly
+
+# %%
+le_bin = LabelEncoder().fit(y_bin_tr)
+xgb_bin = make_xgb()
+xgb_bin.fit(X_tr, le_bin.transform(y_bin_tr), sample_weight=compute_sample_weight("balanced", y_bin_tr))
+pred_bin_xgb = le_bin.inverse_transform(xgb_bin.predict(X_te))
+
+print(f"Etapa 1 XGB (binaria) — acuracia: {accuracy_score(y_bin_te, pred_bin_xgb) * 100:.1f}%")
+print(f"Recall de 'Anomalia': {recall_score(y_bin_te, pred_bin_xgb, pos_label='Anomalia') * 100:.1f}%")
+print("\n--- Relatorio etapa 1 (XGB) ---")
+print(classification_report(y_bin_te, pred_bin_xgb, zero_division=0))
+
+# %% [markdown]
+# ### 9.2 XGBoost — Etapa 2 isolada (tipo, gate perfeito)
+
+# %%
+le_tipo = LabelEncoder().fit(y_tr[mask_anom_tr])
+xgb_tipo = make_xgb()
+xgb_tipo.fit(X_tr[mask_anom_tr], le_tipo.transform(y_tr[mask_anom_tr]),
+             sample_weight=compute_sample_weight("balanced", y_tr[mask_anom_tr]))
+pred_tipo_iso_xgb = le_tipo.inverse_transform(xgb_tipo.predict(X_te[mask_anom_te]))
+
+print(f"Etapa 2 isolada XGB — acuracia: {accuracy_score(y_te[mask_anom_te], pred_tipo_iso_xgb) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te[mask_anom_te], pred_tipo_iso_xgb, average='macro') * 100:.1f}%\n")
+print("--- Relatorio por tipo de anomalia (XGB, gate perfeito) ---")
+print(classification_report(y_te[mask_anom_te], pred_tipo_iso_xgb, zero_division=0))
+
+# %% [markdown]
+# ### 9.3 XGBoost — Predição combinada (duas etapas) + matriz
+
+# %%
+pred_xgb_final = np.array(pred_bin_xgb, dtype=object)
+m_xgb = pred_bin_xgb == "Anomalia"
+pred_xgb_final[m_xgb] = le_tipo.inverse_transform(xgb_tipo.predict(X_te[m_xgb]))
+
+print(f"XGB duas etapas — acuracia: {accuracy_score(y_te, pred_xgb_final) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred_xgb_final, average='macro') * 100:.1f}%\n")
+print("--- Relatorio por classe (XGB duas etapas) ---")
+print(classification_report(y_te, pred_xgb_final, zero_division=0))
+
+# %%
+matriz_xgb2 = confusion_matrix(y_te, pred_xgb_final, labels=classes, normalize="pred")
+plt.figure(figsize=(11, 8))
+sns.heatmap(matriz_xgb2, annot=True, fmt=".0%", cmap="Greens", vmin=0, vmax=1,
+            xticklabels=classes, yticklabels=classes)
+plt.title("Matriz de Confusao - XGB duas etapas (normalizada por coluna)", fontsize=14)
+plt.ylabel("Classe Verdadeira")
+plt.xlabel("Previsao (coluna soma 100%)")
+plt.xticks(rotation=45, ha="right")
+plt.show()
+
+# %% [markdown]
+# ### 9.4 XGBoost — Modelo único (12 classes) + matriz
+
+# %%
 le = LabelEncoder().fit(y)
 xgb_unico = make_xgb()
 xgb_unico.fit(X_tr, le.transform(y_tr), sample_weight=compute_sample_weight("balanced", y_tr))
 pred_xgb_unico = le.inverse_transform(xgb_unico.predict(X_te))
 
-# --- XGBoost duas etapas ---
-# Etapa 1: binaria
-le_bin = LabelEncoder().fit(y_bin_tr)
-xgb_bin = make_xgb()
-xgb_bin.fit(X_tr, le_bin.transform(y_bin_tr), sample_weight=compute_sample_weight("balanced", y_bin_tr))
-pred_bin_xgb = le_bin.inverse_transform(xgb_bin.predict(X_te))
-# Etapa 2: tipo (so nas anomalias)
-le_tipo = LabelEncoder().fit(y_tr[mask_anom_tr])
-xgb_tipo = make_xgb()
-xgb_tipo.fit(X_tr[mask_anom_tr], le_tipo.transform(y_tr[mask_anom_tr]),
-             sample_weight=compute_sample_weight("balanced", y_tr[mask_anom_tr]))
-# Combina
-pred_xgb_final = np.array(pred_bin_xgb, dtype=object)
-m_xgb = pred_bin_xgb == "Anomalia"
-pred_xgb_final[m_xgb] = le_tipo.inverse_transform(xgb_tipo.predict(X_te[m_xgb]))
+print(f"XGB unico — acuracia: {accuracy_score(y_te, pred_xgb_unico) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred_xgb_unico, average='macro') * 100:.1f}%\n")
+print("--- Relatorio por classe (XGB unico) ---")
+print(classification_report(y_te, pred_xgb_unico, zero_division=0))
 
-print(f"XGB unico       — acuracia: {accuracy_score(y_te, pred_xgb_unico) * 100:.1f}% | "
-      f"F1 macro: {f1_score(y_te, pred_xgb_unico, average='macro') * 100:.1f}%")
-print(f"XGB duas etapas — acuracia: {accuracy_score(y_te, pred_xgb_final) * 100:.1f}% | "
-      f"F1 macro: {f1_score(y_te, pred_xgb_final, average='macro') * 100:.1f}%")
+# %%
+matriz_xgb1 = confusion_matrix(y_te, pred_xgb_unico, labels=classes, normalize="pred")
+plt.figure(figsize=(11, 8))
+sns.heatmap(matriz_xgb1, annot=True, fmt=".0%", cmap="Greens", vmin=0, vmax=1,
+            xticklabels=classes, yticklabels=classes)
+plt.title("Matriz de Confusao - XGB unico (normalizada por coluna)", fontsize=14)
+plt.ylabel("Classe Verdadeira")
+plt.xlabel("Previsao (coluna soma 100%)")
+plt.xticks(rotation=45, ha="right")
+plt.show()
 
 # %% [markdown]
 # ## 10. Resumo: RandomForest vs XGBoost, único vs duas etapas
