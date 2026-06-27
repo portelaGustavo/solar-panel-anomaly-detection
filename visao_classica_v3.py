@@ -38,7 +38,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import skew, kurtosis
-from skimage.feature import local_binary_pattern
+from skimage.feature import local_binary_pattern, hog
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score, recall_score
@@ -79,13 +79,17 @@ print("\n--- CONTAGEM DE CLASSES ---")
 print(df["anomaly_class"].value_counts())
 
 # %% [markdown]
-# ## 3. Extração de features (44 por imagem)
+# ## 3. Extração de features
 #
-# Intensidade, região quente (Otsu), bordas (Canny), textura (Sobel), simetria,
-# histograma, grade espacial 3x3 e LBP.
+# Intensidade (média, desvio, skew, kurtosis), região quente (Otsu), momentos de Hu,
+# bordas (Canny), textura (Sobel), simetria, histograma, grade espacial 3x3, LBP,
+# Gabor (textura direcional) e HOG (formas/trincas).
 
 # %%
 HOT_FLOOR = 200
+# Banco de Gabor: 4 orientacoes (textura direcional)
+GABOR_KERNELS = [cv2.getGaborKernel((9, 9), 2.0, th, 4.0, 0.5, 0, ktype=cv2.CV_32F)
+                 for th in np.deg2rad([0, 45, 90, 135])]
 
 
 def extrair_features(img):
@@ -166,6 +170,19 @@ def extrair_features(img):
     lbp_hist, _ = np.histogram(lbp, bins=10, range=(0, 10), density=True)
     for k, v in enumerate(lbp_hist):
         f[f"lbp_{k}"] = float(v)
+
+    # Gabor: mean/std da resposta de cada orientacao (textura direcional)
+    imgf32 = img.astype(np.float32)
+    for i, kern in enumerate(GABOR_KERNELS):
+        resp = cv2.filter2D(imgf32, cv2.CV_32F, kern)
+        f[f"gabor{i}_mean"] = float(resp.mean())
+        f[f"gabor{i}_std"] = float(resp.std())
+
+    # HOG: histograma de gradientes orientados (formas, trincas)
+    hog_vec = hog(imgf32, orientations=8, pixels_per_cell=(8, 8),
+                  cells_per_block=(1, 1), feature_vector=True, channel_axis=None)
+    for k, v in enumerate(hog_vec):
+        f[f"hog_{k}"] = float(v)
 
     return f
 
