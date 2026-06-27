@@ -260,3 +260,66 @@ f1_duas = f1_score(y_te, pred_final, average=None, labels=classes)
 tab = pd.DataFrame({"F1_unico": f1_unico, "F1_duas_etapas": f1_duas}, index=classes).round(2)
 tab["delta"] = (tab["F1_duas_etapas"] - tab["F1_unico"]).round(2)
 print(tab.sort_values("delta", ascending=False))
+
+# %% [markdown]
+# ## 9. Mesmo teste com XGBoost (único e duas etapas)
+#
+# Repetimos as duas abordagens trocando o RandomForest por **XGBoost** (boosting).
+# XGBoost precisa de rótulos numéricos (`LabelEncoder`) e usa `sample_weight` para
+# compensar o desbalanceamento (não tem `class_weight`).
+
+# %%
+from xgboost import XGBClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.utils.class_weight import compute_sample_weight
+
+
+def make_xgb():
+    return XGBClassifier(n_estimators=300, max_depth=6, learning_rate=0.3,
+                         tree_method="hist", random_state=42, n_jobs=-1, eval_metric="mlogloss")
+
+
+# --- XGBoost único (12 classes) ---
+le = LabelEncoder().fit(y)
+xgb_unico = make_xgb()
+xgb_unico.fit(X_tr, le.transform(y_tr), sample_weight=compute_sample_weight("balanced", y_tr))
+pred_xgb_unico = le.inverse_transform(xgb_unico.predict(X_te))
+
+# --- XGBoost duas etapas ---
+# Etapa 1: binaria
+le_bin = LabelEncoder().fit(y_bin_tr)
+xgb_bin = make_xgb()
+xgb_bin.fit(X_tr, le_bin.transform(y_bin_tr), sample_weight=compute_sample_weight("balanced", y_bin_tr))
+pred_bin_xgb = le_bin.inverse_transform(xgb_bin.predict(X_te))
+# Etapa 2: tipo (so nas anomalias)
+le_tipo = LabelEncoder().fit(y_tr[mask_anom_tr])
+xgb_tipo = make_xgb()
+xgb_tipo.fit(X_tr[mask_anom_tr], le_tipo.transform(y_tr[mask_anom_tr]),
+             sample_weight=compute_sample_weight("balanced", y_tr[mask_anom_tr]))
+# Combina
+pred_xgb_final = np.array(pred_bin_xgb, dtype=object)
+m_xgb = pred_bin_xgb == "Anomalia"
+pred_xgb_final[m_xgb] = le_tipo.inverse_transform(xgb_tipo.predict(X_te[m_xgb]))
+
+print(f"XGB unico       — acuracia: {accuracy_score(y_te, pred_xgb_unico) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred_xgb_unico, average='macro') * 100:.1f}%")
+print(f"XGB duas etapas — acuracia: {accuracy_score(y_te, pred_xgb_final) * 100:.1f}% | "
+      f"F1 macro: {f1_score(y_te, pred_xgb_final, average='macro') * 100:.1f}%")
+
+# %% [markdown]
+# ## 10. Resumo: RandomForest vs XGBoost, único vs duas etapas
+
+# %%
+def metricas(nome, pred):
+    return {"config": nome,
+            "acuracia": round(accuracy_score(y_te, pred) * 100, 1),
+            "f1_macro": round(f1_score(y_te, pred, average="macro") * 100, 1)}
+
+
+resumo = pd.DataFrame([
+    metricas("RF unico", pred_unico),
+    metricas("RF duas etapas", pred_final),
+    metricas("XGB unico", pred_xgb_unico),
+    metricas("XGB duas etapas", pred_xgb_final),
+]).set_index("config")
+print(resumo.sort_values("f1_macro", ascending=False))
