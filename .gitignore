@@ -222,3 +222,13 @@ InfraredSolarModules/
 *.pkl
 models/
 outputs/
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+*.bbl
+*.blg

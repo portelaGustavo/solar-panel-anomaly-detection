@@ -1,0 +1,254 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{lmodern}			% Usa a fonte Latin Modern
+\usepackage[T1]{fontenc}		% Seleção de códigos de fonte
+\usepackage[utf8]{inputenc}		% Codificação do documento
+\usepackage[brazil]{babel}
+\usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
+\usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{subfig}				% enables the use of subfigures in floats
+\usepackage{float}
+\usepackage[
+%	a4paper,
+left=2cm,
+right=1.5cm,
+bottom=1.5cm,
+top = 2.5cm,
+foot=0.7cm]{geometry}
+\usepackage{url}
+\usepackage{setspace}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{fancyhdr}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{natbib}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{subcaption}
+
+\bibliographystyle{abbrvnat}
+\setcitestyle{open={(},close={)}}
+ %Citation-related commands
+
+\usepackage{hyperref}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[titletoc]{appendix}
+
+
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  backgroundcolor=\color{backcolour},
+  frame=single,
+  breaklines=true,
+  captionpos=b,
+  tabsize=4
+}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.8,0,0.2}
+\definecolor{backcolour}{rgb}{.95,.95,1}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Python
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small INE410159 -- Visão Computacional}
+\rhead{\small Relatório - Detecção de anomalias em painéis solares}
+\rfoot{\thepage}
+
+\begin{document}
+\onehalfspacing
+\thispagestyle{empty}
+\begin{center}
+	\includegraphics[height=2cm]{logoUFSCsimples} \\
+	{\large Universidade Federal de Santa Catarina -- UFSC} \\
+	{\large Centro Tecnológico -- CTC} \\
+	{\large Departamento de Informática e Estatística -- INE} \\
+	\vspace{1cm}
+	INE410159 -- Visão Computacional \\
+	\vfill
+	\textbf{DETECÇÃO DE ANOMALIAS EM PAINÉIS SOLARES \\ UTILIZANDO TÉCNICAS DE VISÃO COMPUTACIONAL} \\
+	\vspace{1cm}
+	Autores: \\
+	Gabriel Vinicius Crippa - 20206969 \\
+	Gustavo Portela Alves - 21100467 \\
+	Júlia Sebold May - 21101148 \\
+	Yuri Melo Nunes - 20104163 \\
+	\vfill
+	Florianópolis, \today.
+\end{center}
+
+\clearpage
+
+\tableofcontents
+
+\clearpage
+
+\section{Introdução}
+A transição energética tem impulsionado a adoção de fontes de energia limpa e renovável. Os sistemas fotovoltaicos se destacam como uma das principais alternativas dentro da expansão das fontes renováveis, sendo amplamente empregados em instalações residenciais e comerciais. Esses sistemas utilizam módulos solares para converter diretamente a radiação solar em energia elétrica, permitindo a geração distribuída e reduzindo a dependência de fontes convencionais de energia.
+
+Durante sua vida útil, os módulos fotovoltaicos estão sujeitos a intempéries e desgastes operacionais que podem gerar anomalias, comprometendo o potencial de geração de energia. Atualmente, a identificação e a correção dessas falhas dependem de inspeções termográficas periódicas. A abordagem convencional envolve a medição manual em campo utilizando câmeras termográficas portáteis, enquanto soluções mais modernas empregam drones equipados com sensores térmicos. Embora a utilização de drones agilize a captura de dados, o processo ainda exige que as imagens sejam analisadas individualmente pelo olhar humano de um técnico, que inspeciona visualmente os registros para diagnosticar as anomalias e direcionar as estratégias de manutenção.
+
+O diagnóstico visual realizado por operadores humanos pode se tornar um processo demorado e suscetível a falhas ou inconsistências. Como sugestão de aprimoramento, este trabalho propõe a aplicação de técnicas de visão computacional para a análise de imagens termográficas de painéis solares. Por meio da integração de abordagens de visão clássica e algoritmos de aprendizado profundo, o objetivo é facilitar e acelerar a detecção de anomalias, fornecendo uma ferramenta mais robusta e eficiente para o diagnóstico de falhas nesses sistemas.
+\clearpage
+
+\section{Dataset}
+Para o desenvolvimento e treinamento dos modelos de visão computacional, este trabalho utiliza o conjunto de dados público denominado \textit{InfraredSolarModules}. Este \textit{dataset} foi escolhido por fornecer imagens reais em infravermelho de diversas anomalias encontradas em usinas de geração solar. A literatura carece de bases de dados termográficas em larga escala disponíveis publicamente; portanto, a utilização desse \textit{dataset} supre essa lacuna, viabilizando pesquisas em aprendizado de máquina voltadas para a otimização e eficiência da indústria fotovoltaica.
+
+O \textit{dataset} é composto por 20.000 imagens termográficas, cada uma possuindo uma resolução espacial de 24 por 40 pixels. Os dados estão estruturados e categorizados em 12 classes distintas que descrevem o estado de operação dos painéis. Dentre elas, 11 classes representam diferentes tipos de falhas ou degradações detectáveis por assinaturas térmicas, enquanto a classe restante, denominada "Sem Anomalia" (\textit{No-Anomaly}), representa o caso nulo de um módulo operando em condições nominais. Os rótulos de cada amostra são organizados em um arquivo estruturado (JSON), que relaciona o diretório da imagem à sua respectiva classe de anomalia.
+
+A Tabela \ref{tab:classes_dataset} detalha as classes presentes na base de dados, a quantidade de imagens disponíveis para cada categoria e a descrição do comportamento termográfico associado.
+
+\begin{table}[htpb]
+	\centering
+	\caption{Distribuição e descrição das classes de anomalias no dataset \textit{InfraredSolarModules}.}
+	\label{tab:classes_dataset}
+	\vspace{0.2cm}
+	\begin{tabular}{l c p{9cm}}
+		\hline
+		\textbf{Classe} & \textbf{Imagens} & \textbf{Descrição}                                                                      \\
+		\hline
+		Cell            & 1.877            & Ponto quente com geometria quadrada ocorrendo em uma única célula.                      \\
+		Cell-Multi      & 1.288            & Pontos quentes com geometria quadrada ocorrendo em múltiplas células.                   \\
+		Cracking        & 941              & Anomalia no módulo causada por rachaduras em sua superfície.                            \\
+		Hot-Spot        & 251              & Ponto quente isolado em um módulo de filme fino (\textit{thin film}).                   \\
+		Hot-Spot-Multi  & 247              & Múltiplos pontos quentes em um módulo de filme fino.                                    \\
+		Shadowing       & 1.056            & Obstrução da luz solar causada por vegetação, outras estruturas ou fileiras de painéis. \\
+		Diode           & 1.499            & Diodo de desvio (bypass) ativado, afetando tipicamente 1/3 do módulo.                   \\
+		Diode-Multi     & 175              & Múltiplos diodos de desvio ativados, afetando tipicamente 2/3 do módulo.                \\
+		Vegetation      & 1.639            & Painéis obstruídos pelo crescimento de vegetação.                                       \\
+		Soiling         & 205              & Presença de terra, poeira ou outros detritos acumulados na superfície do módulo.        \\
+		Offline-Module  & 828              & Módulo inativo, caracterizado pelo aquecimento de toda a sua extensão.                  \\
+		No-Anomaly      & 10.000           & Módulo solar operando em condições nominais, sem defeitos.                              \\
+		\hline
+	\end{tabular}
+\end{table}
+\clearpage
+
+\section{Solução com visão clássica}
+
+\subsection{Preparação do ambiente e análise exploratória dos dados}
+
+O desenvolvimento do projeto foi centralizado na plataforma \textit{Google Colab}, utilizando uma abordagem modular dividida em seções sequenciais. O conjunto de dados \textit{InfraredSolarModules} foi importado diretamente do repositório remoto para o ambiente virtual de execução, sendo o arquivo \textit{module\textunderscore metadata.json} convertido em uma estrutura de tabela (\textit{DataFrame} do \textit{Pandas}) para correlacionar cada arquivo de imagem de 24x40 pixels à sua respectiva classe de anomalia.
+
+Foi desenvolvida uma rotina para visualização e inspeção visual das matrizes brutas em tons de cinza. Durante esse processo de análise exploratória, identificou-se um comportamento indesejado de renderização da biblioteca \textit{Matplotlib} (\textit{pyplot.imshow}). Por padrão, a biblioteca aplica uma normalização automática de contraste baseada exclusivamente nos valores mínimos e máximos locais de cada imagem.
+
+Essa característica fazia com que a visualização fosse prejudicada, painéis categorizados como nominais (\textit{No-Anomaly}) apresentavam manchas e gradientes de calor inexistentes no mundo real, uma vez que variações irrelevantes eram esticadas para preencher toda a escala visual. A resolução desse problema e a calibração correta dos dados exigiram o travamento explícito dos limites de exibição nos valores absolutos do sensor infravermelho, utilizando os parâmetros matemáticos $vmin=0$ e $vmax=255$. A Figura \ref{fig:comp_escala} ilustra o impacto dessa correção, revelando a assinatura térmica uniforme real de um módulo saudável.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\linewidth]{comp_escala.png}
+	\caption{Impacto da normalização automática versus escala térmica absoluta (0-255) em módulo nominal.}
+	\label{fig:comp_escala}
+\end{figure}
+
+\subsection{\textit{Pipeline} de análise inicial}
+
+A partir da estabilização visual dos dados, estabeleceu-se que os defeitos baseados em superaquecimento geométrico estrito (notadamente a classe \textit{Cell}) possuíam forte assinatura no domínio do valor. Foi desenhado e implementado um \textit{pipeline} clássico composto por quatro etapas sequenciais utilizando a biblioteca \textit{OpenCV}:
+
+\begin{enumerate}
+	\item \textbf{Limiarização binária} (\textit{cv2.threshold}): operando diretamente na intensidade dos pixels, aplicou-se um limiar de corte ($T = 180$). Pixels com intensidade superior a $T$ (zonas de alta temperatura) foram binarizados para branco (255), enquanto o restante da estrutura do painel foi mapeado para preto (0).
+	\item \textbf{Condicionamento espacial por morfologia matemática} (\textit{cv2.morphologyEx}): na sequência utilizou-se uma operação morfológica composta de abertura (uma filtragem de erosão seguida por dilatação). Dado o tamanho reduzido das imagens (24x40 pixels), calibrou-se um elemento estruturante (\textit{kernel}) compacto de dimensões $2\times2$ preenchido por uns. A erosão eliminou os pixels isolados de ruído, enquanto a subsequente dilatação restaurou a massa geométrica da anomalia principal.
+	\item \textbf{Extração de características e medição de contornos} (\textit{cv2.findContours}): a imagem binária condicionada foi submetida a um algoritmo de varredura geométrica para identificar contornos externos. A partir das fronteiras localizadas, calculou-se a área em pixels da maior mancha quente de cada imagem por meio da função \textit{cv2.contourArea}.
+	\item \textbf{Classificação heurística baseada em regras:} como fechamento da lógica, estruturou-se um decisor heurístico simples fundamentado na dimensão da área segmentada:
+	      \begin{itemize}
+		      \item Se a maior área fosse inferior a 5 pixels, o módulo era classificado como \textit{No-Anomaly};
+		      \item Se a área superasse 700 pixels (indicando que praticamente toda a matriz 24x40 atingiu saturação térmica), o módulo era mapeado como \textit{Offline-Module};
+		      \item Áreas intermediárias sobreviventes eram rotuladas como anomalias puntiformes da classe \textit{Cell}.
+	      \end{itemize}
+\end{enumerate}
+
+\clearpage
+
+\section{Solução com \textit{deep learning}}
+Para a tarefa de identificação e classificação de anomalias em imagens termográficas, este trabalho emprega redes neurais convolucionais, dada a sua eficácia na extração de características em problemas de visão computacional. Optou-se pela utilização da arquitetura ResNet34, ajustada aos dados específicos da pesquisa por meio de técnicas de aprendizado por transferência.
+
+A primeira etapa do desenvolvimento consistiu no pré-processamento e balanceamento da base de dados. Visando evitar o enviesamento do modelo em direção à classe majoritária, a categoria correspondente aos painéis operando em condições normais (\textit{No-Anomaly}) foi subamostrada aleatoriamente, sendo reduzida do seu total original de 10.000 amostras para 1.800 imagens. Além disso, para agrupar comportamentos térmicos equivalentes e mitigar redundâncias, algumas classes anômalas foram consolidadas. Ocorrências múltiplas de um mesmo defeito, registradas nos rótulos \textit{Cell-Multi}, \textit{Diode-Multi} e \textit{Hot-Spot-Multi}, foram incorporadas respectivamente às suas categorias raízes: \textit{Cell}, \textit{Diode} e \textit{Hot-Spot}. A distribuição estrutural do conjunto de dados após o processamento encontra-se detalhada na Tabela \ref{tab:dataset_atualizado}.
+
+\begin{table}[htpb]
+	\centering
+	\caption{Distribuição atualizada das classes.}
+	\label{tab:dataset_atualizado}
+	\vspace{0.2cm}
+	\begin{tabular}{l c}
+		\hline
+		\textbf{Classe} & \textbf{Número de Imagens} \\
+		\hline
+		Cell            & 3.165                      \\
+		No-Anomaly      & 1.800                      \\
+		Diode           & 1.674                      \\
+		Vegetation      & 1.639                      \\
+		Shadowing       & 1.056                      \\
+		Cracking        & 940                        \\
+		Offline-Module  & 827                        \\
+		Hot-Spot        & 495                        \\
+		Soiling         & 204                        \\
+		\hline
+	\end{tabular}
+\end{table}
+
+Com os dados organizados, o treinamento do modelo foi estruturado visando o melhor refinamento dos pesos da rede. Para realizar essa etapa, aplicou-se um método exploratório de busca pela melhor taxa de aprendizado, que permite identificar empiricamente a faixa de valores ideal onde a otimização atua de maneira mais eficiente e estável. A Figura \ref{fig:lr_find} ilustra o comportamento da função de perda em resposta à variação da taxa de aprendizado durante este teste.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\linewidth]{lrfind.png}
+	\caption{Função de perda em resposta à variação da taxa de aprendizado.}
+	\label{fig:lr_find}
+\end{figure}
+
+A rede foi então treinada aplicando o ajuste fino com base na faixa ideal descoberta. Como resultado, o modelo ResNet34 alcançou uma precisão de 67\% e um \textit{F1-score} de 65\% no diagnóstico das classes. Os números não indicam onde o modelo acerta ou erra, portanto, para aprofundar a análise a respeito do desempenho de identificação por categoria, extraiu-se a matriz de confusão das predições em relação ao conjunto de teste, na qual é possível constatar a distribuição dos acertos, que estão concentrados na diagonal principal, e dos falsos positivos, conforme exposto na Figura \ref{fig:matriz_confusao}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\linewidth]{matriz_confusao_dl.png}
+	\caption{Matriz de confusão resultante das predições do modelo ResNet34.}
+	\label{fig:matriz_confusao}
+\end{figure}
+
+Analisando a matriz, observa-se que o modelo apresenta um desempenho consistente nas categorias com maior volume de amostras. Contudo, o principal ponto de vulnerabilidade do classificador manifesta-se na classe \textit{Soiling}, que exibe uma taxa de erro mais acentuada em comparação às demais. Esse comportamento está diretamente associado à escassez de dados dessa categoria, que possui apenas 204 registros na base consolidada, limitando a capacidade da rede neural de extrair e generalizar características visuais para essa anomalia.
+
+Para ilustrar o funcionamento do modelo, a Figura \ref{fig:amostras_resultados} demonstra uma amostra das classificações, comparando a resposta predita pela rede neural com o rótulo original da imagem.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\linewidth]{resultados_predicao_dl.png}
+	\caption{Amostra da operação do modelo.}
+	\label{fig:amostras_resultados}
+\end{figure}
+
+Embora os resultados iniciais validem a viabilidade da técnica, limitações foram identificadas durante os experimentos. Tentativas preliminares de compensar o desbalanceamento do número de amostras por meio da aplicação de pesos resultaram em uma degradação no desempenho geral do modelo, reduzindo tanto a precisão quanto o \textit{F1-score}. Diante disso, como proposta de melhoria, sugere-se a exploração de técnicas de \textit{data augmentation}. Contudo, destaca-se que modificações artificiais de brilho e contraste devem ser evitadas, visto que em imagens termográficas, a intensidade dos pixels está relacionada à temperatura do módulo, de modo que alterações dessa natureza descaracterizariam os padrões reais das anomalias e da operação nominal dos painéis solares.
+\clearpage
+
+\section{Conclusão}
+
+\end{document}
