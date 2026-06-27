@@ -37,6 +37,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.stats import skew, kurtosis
 from skimage.feature import local_binary_pattern
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -98,6 +99,10 @@ def extrair_features(img):
     f["max_int"] = float(img.max())
     f["min_int"] = float(img.min())
     f["p90_int"] = float(np.percentile(img, 90))
+    # Forma da distribuicao de intensidade
+    flat = img.flatten().astype(np.float32)
+    f["skew_int"] = float(skew(flat)) if img.std() > 0 else 0.0
+    f["kurt_int"] = float(kurtosis(flat)) if img.std() > 0 else 0.0
 
     # Regiao quente (Otsu com piso)
     otsu_t, _ = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
