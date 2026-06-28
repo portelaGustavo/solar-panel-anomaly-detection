@@ -323,6 +323,50 @@ A coluna $\Delta$ indica a variação em relação ao conjunto base. As Tabelas 
 
 Em ambos os modelos o desempenho cresce de forma consistente a cada grupo, e o salto mais expressivo vem do par \textit{Gabor} + HOG, indicando que descritores de textura direcional e de forma capturam padrões que as estatísticas de intensidade isoladas não representam. O ganho é mais acentuado no XGBoost, cujo \textit{F1-score} macro sobe de 42,2\% para 53,9\% (+11,7 pontos), contra +7,0 pontos do Random Forest, confirmando o XGBoost como o melhor classificador para o conjunto completo de características.
 
+\subsection{Classificação em duas etapas}
+
+Dado o forte desbalanceamento da base, em que a classe \textit{No-Anomaly} representa metade das amostras, avaliou-se uma estratégia de classificação em \textbf{duas etapas}. Na primeira, um classificador binário decide apenas se há ou não anomalia (\textit{Anomalia} vs \textit{No-Anomaly}); na segunda, um segundo classificador, treinado somente com imagens de anomalia, determina o tipo específico. A motivação é retirar o peso da classe majoritária da decisão fina entre os tipos de defeito.
+
+A Tabela \ref{tab:duas_etapas} compara o modelo único (que decide as 12 classes de uma vez) com a abordagem em duas etapas, para o RF e o XGBoost, usando o conjunto completo de 181 características.
+
+\begin{table}[H]
+	\centering
+	\caption{Modelo único vs classificação em duas etapas.}
+	\label{tab:duas_etapas}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{l l c c}
+		\hline
+		\textbf{Modelo} & \textbf{Abordagem} & \textbf{Acurácia} & \textbf{F1-score macro} \\
+		\hline
+		RF  & Único       & 67,6\% & 47,7\% \\ \hline
+		RF  & Duas etapas & 69,2\% & 47,5\% \\ \hline
+		XGB & Único       & 74,2\% & 53,9\% \\ \hline
+		XGB & Duas etapas & 73,3\% & 52,9\% \\
+		\hline
+	\end{tabular}
+\end{table}
+
+A primeira etapa, isoladamente, constitui um detector de falhas de alto valor prático: responde se um painel precisa ou não de inspeção. A Tabela \ref{tab:detector} resume seu desempenho.
+
+\begin{table}[H]
+	\centering
+	\caption{Desempenho do detector binário (etapa 1): anomalia vs \textit{No-Anomaly}.}
+	\label{tab:detector}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{l c c}
+		\hline
+		\textbf{Modelo} & \textbf{Acurácia} & \textbf{Recall de Anomalia} \\
+		\hline
+		RF  & 84,9\% & 79,6\% \\ \hline
+		XGB & 88,4\% & 84,2\% \\
+		\hline
+	\end{tabular}
+\end{table}
+
+O detector binário atinge 88,4\% de acurácia com o XGBoost, recuperando 84,2\% das anomalias reais. Já na classificação completa, a abordagem em duas etapas não traz vantagem clara: para o RF, melhora levemente a acurácia (67,6\% para 69,2\%) sem alterar o \textit{F1-score} macro; para o XGBoost, é ligeiramente inferior ao modelo único (53,9\% contra 52,9\% de \textit{F1} macro). O ganho limitado deve-se aos erros da primeira etapa, que deixa passar cerca de 16\% das anomalias --- estas são contabilizadas como erro antes mesmo de a segunda etapa classificar o tipo. Conclui-se que a divisão em duas etapas é mais valiosa como \textbf{detector de falhas} do que como melhoria da classificação fina, que permanece melhor servida pelo XGBoost único.
+
 \clearpage
 
 \section{Solução com \textit{deep learning}}
