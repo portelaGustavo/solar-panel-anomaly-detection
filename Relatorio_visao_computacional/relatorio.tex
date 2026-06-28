@@ -398,7 +398,7 @@ Um aspecto importante desse detector é que o limiar de decisão pode ser ajusta
 
 Reduzindo o limiar de 0,50 para valores menores, o \textit{recall} sobe progressivamente, permitindo capturar quase todas as anomalias ao custo de uma precisão menor. Na prática, isso significa que o operador pode calibrar o sistema para priorizar a segurança (não deixar passar falhas), aceitando inspecionar alguns painéis sãos a mais --- um ajuste desejável em um cenário de triagem automática.
 
-\subsection{Análise do melhor modelo (XGBoost)}
+\subsection{Análise das confusões entre classes (XGBoost)}
 
 Confirmado o \textit{XGBoost} como o melhor classificador (74,2\% de acurácia e 53,9\% de \textit{F1-score} macro no conjunto completo), analisou-se em detalhe \textit{onde} o modelo erra. As Figuras \ref{fig:matriz_precision} e \ref{fig:matriz_recall} apresentam a matriz de confusão normalizada por coluna (\textit{precision}) e por linha (\textit{recall}), respectivamente. A primeira responde "do que foi previsto como classe X, quanto era X de fato"; a segunda, "da classe real X, quanto foi corretamente identificado".
 
@@ -448,7 +448,7 @@ A partir da matriz por linha, a Tabela \ref{tab:confusoes} resume, para cada cla
 	}
 \end{table}
 
-Dois padrões se destacam. Primeiro, vários tipos de anomalia sutil --- \textit{Hot-Spot} (56\%), \textit{Offline-Module} (44\%) e \textit{Shadowing} (34\%) --- são frequentemente confundidos com \textit{No-Anomaly}, indicando que sua assinatura térmica é fraca e próxima da de um módulo nominal. Segundo, há confusão entre classes "irmãs", de mesmo defeito em grau diferente, como \textit{Diode-Multi} com \textit{Diode} (37\%) e \textit{Cell-Multi} com \textit{Cell} (20\%). A classe \textit{No-Anomaly}, por sua vez, é classificada com excelência (96\% de acerto), reforçando a robustez do modelo como detector de falhas.
+Esta tabela é importante para futuras otimizações: indica possíveis agrupamentos e tratamentos específicos entre as classes. Os agrupamentos óbvios são \textit{Cell} com \textit{Cell-Multi}, \textit{Diode} com \textit{Diode-Multi} e \textit{Hot-Spot} com \textit{Hot-Spot-Multi}.
 
 \clearpage
 
