@@ -367,6 +367,31 @@ Conclui-se que a divisão em duas etapas é mais valiosa como \textbf{detector d
 
 Apenas detectar a presença de uma possível falha, com 88,4\% de acurácia e recuperando 84,2\% das anomalias reais, já constitui um resultado de grande utilidade prática. Em uma usina solar, esse detector pode operar como um filtro automático que dispara um alerta sempre que um módulo apresenta indício de anomalia, encaminhando apenas os casos suspeitos para a verificação de um profissional. Assim, em vez de inspecionar manualmente todos os painéis, o técnico concentra o esforço nos módulos sinalizados pelo sistema, reduzindo drasticamente o volume de análise humana e agilizando a manutenção. Mesmo sem identificar o tipo exato do defeito, o simples acionamento confiável desse alerta representa um ganho operacional relevante para o monitoramento em larga escala.
 
+\subsubsection{Ajuste do limiar de decisão}
+
+Um aspecto importante desse detector é que o limiar de decisão pode ser ajustado conforme o objetivo da operação. Por padrão, um classificador atribui a classe \textit{Anomalia} quando a probabilidade estimada ultrapassa 0,5. Reduzir esse limiar torna o detector mais sensível: ele passa a sinalizar mais painéis como suspeitos, aumentando o \textit{recall} (proporção de falhas reais capturadas) ao custo de mais alarmes falsos (menor \textit{precision}). Para uma tarefa de triagem, esse compromisso é vantajoso, pois deixar de detectar uma falha real (falso negativo) costuma ser mais grave do que inspecionar um painel saudável (falso positivo). A Tabela \ref{tab:limiar} mostra esse trade-off para o detector XGBoost, variando o limiar de decisão.
+
+\begin{table}[H]
+	\centering
+	\caption{\textit{Recall} e \textit{precision} da classe \textit{Anomalia} em função do limiar de decisão (detector XGBoost).}
+	\label{tab:limiar}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{c c c}
+		\hline
+		\textbf{Limiar} & \textbf{Recall} & \textbf{Precision} \\
+		\hline
+		0,50 & 84,2\% & 91,9\% \\ \hline
+		0,40 & 85,8\% & 90,1\% \\ \hline
+		0,30 & 87,8\% & 88,3\% \\ \hline
+		0,20 & 90,2\% & 85,9\% \\ \hline
+		0,10 & 92,8\% & 81,6\% \\
+		\hline
+	\end{tabular}
+\end{table}
+
+Reduzindo o limiar de 0,50 para valores menores, o \textit{recall} sobe progressivamente, permitindo capturar quase todas as anomalias ao custo de uma precisão menor. Na prática, isso significa que o operador pode calibrar o sistema para priorizar a segurança (não deixar passar falhas), aceitando inspecionar alguns painéis sãos a mais --- um ajuste desejável em um cenário de triagem automática.
+
 \clearpage
 
 \section{Solução com \textit{deep learning}}

@@ -227,3 +227,25 @@ for r in resultados:
 print("\n--- LaTeX (detector) ---")
 for d in detector:
     print(f"{d['modelo']} & {d['acc_bin']:.1f}\\% & {d['recall_anom']:.1f}\\% \\\\")
+
+# %% [markdown]
+# ## 3.5 (extra) Ajuste de limiar do detector binario (XGB) — trade-off precision/recall
+
+# %%
+from sklearn.metrics import precision_score
+
+le_bin = LabelEncoder().fit(y_bin_tr)
+xgb_b = XGBClassifier(n_estimators=300, max_depth=6, learning_rate=0.3, tree_method="hist",
+                      random_state=42, n_jobs=-1, eval_metric="mlogloss")
+xgb_b.fit(Xtr, le_bin.transform(y_bin_tr), sample_weight=compute_sample_weight("balanced", y_bin_tr))
+idx_anom = list(le_bin.classes_).index("Anomalia")
+proba = xgb_b.predict_proba(Xte)[:, idx_anom]
+ytrue = (y_bin_te == "Anomalia").astype(int)
+
+print("\n=== Limiar | Recall | Precision (Anomalia, XGB) ===")
+print("--- LaTeX (limiar) ---")
+for t in [0.50, 0.40, 0.30, 0.20, 0.10]:
+    pred_t = (proba >= t).astype(int)
+    rec = recall_score(ytrue, pred_t) * 100
+    pre = precision_score(ytrue, pred_t, zero_division=0) * 100
+    print(f"{t:.2f} & {rec:.1f}\\% & {pre:.1f}\\% \\\\")
