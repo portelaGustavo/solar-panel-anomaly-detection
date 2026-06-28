@@ -323,7 +323,7 @@ A coluna $\Delta$ indica a variação em relação ao conjunto base. As Tabelas 
 
 Em ambos os modelos o desempenho cresce de forma consistente a cada grupo, e o salto mais expressivo vem do par \textit{Gabor} + HOG, indicando que descritores de textura direcional e de forma capturam padrões que as estatísticas de intensidade isoladas não representam. O ganho é mais acentuado no XGBoost, cujo \textit{F1-score} macro sobe de 42,2\% para 53,9\% (+11,7 pontos), contra +7,0 pontos do Random Forest, confirmando o XGBoost como o melhor classificador para o conjunto completo de características.
 
-\subsection{Classificação em duas etapas}
+\subsection{Classificação em duas etapas (Anomalia vs No-Anomaly)}
 
 Dado o forte desbalanceamento da base, em que a classe \textit{No-Anomaly} representa metade das amostras, avaliou-se uma estratégia de classificação em \textbf{duas etapas}. Na primeira, um classificador binário decide apenas se há ou não anomalia (\textit{Anomalia} vs \textit{No-Anomaly}); na segunda, um segundo classificador, treinado somente com imagens de anomalia, determina o tipo específico. A motivação é retirar o peso da classe majoritária da decisão fina entre os tipos de defeito.
 
@@ -347,7 +347,7 @@ A Tabela \ref{tab:duas_etapas} compara o modelo único (que decide as 12 classes
 	\end{tabular}
 \end{table}
 
-A primeira etapa, isoladamente, constitui um detector de falhas de alto valor prático: responde se um painel precisa ou não de inspeção. A Tabela \ref{tab:detector} resume seu desempenho.
+Conclui-se que a divisão em duas etapas é mais valiosa como \textbf{detector de falhas} do que como melhoria da classificação fina, que permanece melhor servida pelo XGBoost único. A primeira etapa, isoladamente, constitui um detector de alto valor prático: responde se um painel precisa ou não de inspeção. A Tabela \ref{tab:detector} resume seu desempenho.
 
 \begin{table}[H]
 	\centering
@@ -365,7 +365,7 @@ A primeira etapa, isoladamente, constitui um detector de falhas de alto valor pr
 	\end{tabular}
 \end{table}
 
-O detector binário atinge 88,4\% de acurácia com o XGBoost, recuperando 84,2\% das anomalias reais. Já na classificação completa, a abordagem em duas etapas não traz vantagem clara: para o RF, melhora levemente a acurácia (67,6\% para 69,2\%) sem alterar o \textit{F1-score} macro; para o XGBoost, é ligeiramente inferior ao modelo único (53,9\% contra 52,9\% de \textit{F1} macro). O ganho limitado deve-se aos erros da primeira etapa, que deixa passar cerca de 16\% das anomalias --- estas são contabilizadas como erro antes mesmo de a segunda etapa classificar o tipo. Conclui-se que a divisão em duas etapas é mais valiosa como \textbf{detector de falhas} do que como melhoria da classificação fina, que permanece melhor servida pelo XGBoost único.
+Apenas detectar a presença de uma possível falha, com 88,4\% de acurácia e recuperando 84,2\% das anomalias reais, já constitui um resultado de grande utilidade prática. Em uma usina solar, esse detector pode operar como um filtro automático que dispara um alerta sempre que um módulo apresenta indício de anomalia, encaminhando apenas os casos suspeitos para a verificação de um profissional. Assim, em vez de inspecionar manualmente todos os painéis, o técnico concentra o esforço nos módulos sinalizados pelo sistema, reduzindo drasticamente o volume de análise humana e agilizando a manutenção. Mesmo sem identificar o tipo exato do defeito, o simples acionamento confiável desse alerta representa um ganho operacional relevante para o monitoramento em larga escala.
 
 \clearpage
 
