@@ -450,6 +450,28 @@ A partir da matriz por linha, a Tabela \ref{tab:confusoes} resume, para cada cla
 
 Esta tabela é importante para futuras otimizações: indica possíveis agrupamentos e tratamentos específicos entre as classes. Os agrupamentos óbvios são \textit{Cell} com \textit{Cell-Multi}, \textit{Diode} com \textit{Diode-Multi} e \textit{Hot-Spot} com \textit{Hot-Spot-Multi}.
 
+\subsubsection{Resultado com agrupamento das classes irmãs}
+
+Aplicando os agrupamentos sugeridos (\textit{Cell}+\textit{Cell-Multi}, \textit{Diode}+\textit{Diode-Multi}, \textit{Hot-Spot}+\textit{Hot-Spot-Multi}), o problema passa de 12 para 9 classes. A Tabela \ref{tab:agrupamento} mostra o resultado do XGBoost antes e depois, com a variação ($\Delta$).
+
+\begin{table}[H]
+	\centering
+	\caption{Impacto do agrupamento das classes irmãs no XGBoost.}
+	\label{tab:agrupamento}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{l c c c c}
+		\hline
+		\textbf{Cenário} & \textbf{Acurácia} & \textbf{$\Delta$} & \textbf{F1 macro} & \textbf{$\Delta$} \\
+		\hline
+		12 classes (sem agrupamento) & 74,2\% & --     & 53,9\% & --     \\ \hline
+		9 classes (agrupado)         & 77,5\% & +3,4   & 61,7\% & +7,8   \\
+		\hline
+	\end{tabular}
+\end{table}
+
+O agrupamento elimina as confusões entre classes irmãs e eleva o \textit{F1-score} macro de 53,9\% para 61,7\% (+7,8 pontos), com ganho de 3,4 pontos em acurácia.
+
 \clearpage
 
 \section{Solução com \textit{deep learning}}
