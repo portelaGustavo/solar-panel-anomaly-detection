@@ -566,4 +566,16 @@ Embora os resultados iniciais validem a viabilidade da técnica, limitações fo
 
 \section{Conclusão}
 
+Este trabalho aplicou técnicas de visão computacional à detecção e classificação de anomalias em imagens termográficas de painéis solares, com o objetivo de reduzir a dependência da inspeção visual manual. Foram exploradas duas abordagens complementares: uma de visão clássica, baseada em extração de características e classificadores de aprendizado de máquina, e outra de aprendizado profundo, com redes neurais convolucionais.
+
+Na abordagem clássica, partiu-se de um \textit{pipeline} heurístico e evoluiu-se para a combinação de um vetor rico de características com classificadores treinados. O XGBoost destacou-se como o melhor modelo, alcançando 74,2\% de acurácia e 53,9\% de \textit{F1-score} macro sobre as 12 classes, valor que sobe para 61,7\% de \textit{F1} macro ao consolidar as classes irmãs. Na abordagem de aprendizado profundo, a arquitetura ResNet34 ajustada por \textit{transfer learning} atingiu 67\% de acurácia e 65\% de \textit{F1-score} sobre o conjunto de classes consolidadas.
+
+Embora os números das duas abordagens sejam próximos, a comparação direta não é estritamente justa: o modelo de aprendizado profundo foi avaliado sobre nove classes consolidadas e com a classe \textit{No-Anomaly} subamostrada, ao passo que o melhor resultado clássico considerou as doze classes originais sobre a base completa. Mais relevante que a disputa por décimos de ponto foi a constatação de que o resultado de maior valor prático é o detector binário de falhas (anomalia vs \textit{No-Anomaly}): com 88,4\% de acurácia e 84,2\% de \textit{recall}, ele pode operar como um filtro automático de triagem, sinalizando os módulos suspeitos para inspeção e reduzindo drasticamente o volume de análise humana, mesmo sem identificar o tipo exato do defeito.
+
+As principais limitações observadas concentram-se nas classes minoritárias e visualmente sutis, como \textit{Soiling} e \textit{Hot-Spot}, cujo baixo número de amostras e a assinatura térmica fraca dificultam a distinção em ambas as abordagens. O forte desbalanceamento da base e o fato de as características térmicas não capturarem bem anomalias de natureza não-térmica também restringem o desempenho.
+
+Como trabalhos futuros, destacam-se: o agrupamento de classes de mesmo defeito, que já demonstrou ganho expressivo; técnicas de \textit{data augmentation} e a ampliação de amostras das classes raras; a combinação de modelos por \textit{ensemble}; a classificação hierárquica em duas etapas; e a validação do sistema em campo, com atenção ao fato de que a solução clássica, por rodar em CPU, é candidata natural a implantação em \textit{hardware} embarcado em drones e dispositivos de inspeção.
+
+Em conjunto, os resultados confirmam a viabilidade do uso de visão computacional para o diagnóstico de anomalias em painéis solares, oferecendo desde um detector de falhas robusto e de baixo custo computacional até classificadores capazes de identificar o tipo específico de defeito, contribuindo para uma manutenção mais ágil e eficiente de usinas fotovoltaicas.
+
 \end{document}
