@@ -472,6 +472,37 @@ Aplicando os agrupamentos sugeridos (\textit{Cell}+\textit{Cell-Multi}, \textit{
 
 O agrupamento elimina as confusões entre classes irmãs e eleva o \textit{F1-score} macro de 53,9\% para 61,7\% (+7,8 pontos), com ganho de 3,4 pontos em acurácia.
 
+\subsection{Otimização por remoção de características}
+
+O modelo final utiliza 181 características, mas nem todas contribuem para o desempenho. Para identificar as supérfluas, mediu-se a \textbf{importância por permutação}: cada característica é embaralhada e observa-se quanto o \textit{F1-score} macro cai. Características com importância nula ou negativa não ajudam (ou atrapalham) e são candidatas a remoção. A Figura \ref{fig:importancia} mostra as mais e menos importantes.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\linewidth]{importancia_features.png}
+	\caption{Importância por permutação das características (vermelho = inútil ou prejudicial).}
+	\label{fig:importancia}
+\end{figure}
+
+Removendo as características com importância $\leq 0$ e re-treinando o XGBoost, obtém-se um modelo mais enxuto sem perda relevante de desempenho, como mostra a Tabela \ref{tab:remocao}.
+
+\begin{table}[H]
+	\centering
+	\caption{Desempenho do XGBoost com o conjunto completo vs reduzido de características.}
+	\label{tab:remocao}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{l c c c c c}
+		\hline
+		\textbf{Conjunto} & \textbf{Nº feat.} & \textbf{Acurácia} & \textbf{$\Delta$} & \textbf{F1 macro} & \textbf{$\Delta$} \\
+		\hline
+		Completo & 181 & 74,2\% & --   & 53,9\% & --   \\ \hline
+		Reduzido & 115 & 73,9\% & -0,3 & 53,4\% & -0,5 \\
+		\hline
+	\end{tabular}
+\end{table}
+
+Das 181 características, 66 apresentaram importância nula ou negativa e foram removidas, restando 115. O desempenho praticamente não muda (-0,3 de acurácia e -0,5 de \textit{F1-score} macro, dentro da margem de ruído), confirmando que cerca de um terço das características era dispensável. O modelo reduzido é mais leve e rápido, sem custo relevante de qualidade.
+
 \clearpage
 
 \section{Solução com \textit{deep learning}}
