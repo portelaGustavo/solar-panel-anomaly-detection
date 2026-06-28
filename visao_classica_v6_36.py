@@ -182,10 +182,10 @@ print("XGB unico — acuracia: {:.1f}% | F1 macro: {:.1f}%".format(
     accuracy_score(y_te, pred) * 100, f1_score(y_te, pred, average="macro") * 100))
 
 
-def salva_matriz(norm, nome_png, titulo, xlabel):
+def salva_matriz(norm, nome_png, titulo, xlabel, cmap):
     cm = confusion_matrix(y_te, pred, labels=classes, normalize=norm)
     plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt=".0%", cmap="Blues", vmin=0, vmax=1,
+    sns.heatmap(cm, annot=True, fmt=".0%", cmap=cmap, vmin=0, vmax=1,
                 xticklabels=classes, yticklabels=classes)
     plt.title(titulo, fontsize=13)
     plt.ylabel("Classe Verdadeira")
@@ -201,16 +201,17 @@ def salva_matriz(norm, nome_png, titulo, xlabel):
 # %%
 salva_matriz("pred", "matriz_xgb_precision.png",
              "Matriz de confusao XGBoost (normalizada por coluna / precision)",
-             "Previsao (coluna soma 100%)")
+             "Previsao (coluna soma 100%)", "Greens")
 cm_rec = salva_matriz("true", "matriz_xgb_recall.png",
                       "Matriz de confusao XGBoost (normalizada por linha / recall)",
-                      "Previsao")
+                      "Previsao", "Oranges")
 
 # %%
-# Tabela das maiores confusoes por classe (a classe com que mais confunde, fora a diagonal)
-print("\n--- LaTeX (maiores confusoes por classe) ---")
+# Tabela das 5 maiores confusoes por classe (fora a diagonal)
+print("\n--- LaTeX (top 5 confusoes por classe) ---")
 for i, real in enumerate(classes):
     fora = cm_rec[i].copy()
     fora[i] = 0
-    j = int(fora.argmax())
-    print(f"{real} & {cm_rec[i, i]*100:.0f}\\% & {classes[j]} & {fora[j]*100:.0f}\\% \\\\")
+    ordem = np.argsort(fora)[::-1][:5]
+    tops = ", ".join(f"{classes[j]} {fora[j]*100:.0f}\\%" for j in ordem if fora[j] > 0)
+    print(f"{real} ({cm_rec[i, i]*100:.0f}\\%) & {tops} \\\\")
