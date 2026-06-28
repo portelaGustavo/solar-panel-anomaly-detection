@@ -424,25 +424,28 @@ A partir da matriz por linha, a Tabela \ref{tab:confusoes} resume, para cada cla
 	\label{tab:confusoes}
 	\vspace{0.2cm}
 	\footnotesize
+	\setlength{\tabcolsep}{4pt}
 	\renewcommand{\arraystretch}{1.3}
-	\begin{tabular}{l p{11.5cm}}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l r|l r|l r|l r|l r|l r}
 		\hline
-		\textbf{Classe (acerto)} & \textbf{5 maiores confusões} \\
+		\textbf{Classe} & \textbf{Acerto} & \multicolumn{2}{c|}{\textbf{1ª}} & \multicolumn{2}{c|}{\textbf{2ª}} & \multicolumn{2}{c|}{\textbf{3ª}} & \multicolumn{2}{c|}{\textbf{4ª}} & \multicolumn{2}{c}{\textbf{5ª}} \\
 		\hline
-		Cell (49\%) & No-Anomaly 24\%, Vegetation 14\%, Cell-Multi 6\%, Offline-Module 2\%, Shadowing 2\% \\ \hline
-		Cell-Multi (30\%) & Cell 20\%, Cracking 16\%, No-Anomaly 14\%, Vegetation 12\%, Shadowing 2\% \\ \hline
-		Cracking (72\%) & Cell-Multi 7\%, Cell 5\%, No-Anomaly 4\%, Hot-Spot-Multi 4\%, Vegetation 3\% \\ \hline
-		Diode (78\%) & No-Anomaly 16\%, Offline-Module 1\%, Cracking 1\%, Cell-Multi 1\%, Vegetation 1\% \\ \hline
-		Diode-Multi (35\%) & Diode 37\%, No-Anomaly 15\%, Offline-Module 6\%, Cell 4\%, Shadowing 2\% \\ \hline
-		Hot-Spot (23\%) & No-Anomaly 56\%, Hot-Spot-Multi 8\%, Shadowing 4\%, Vegetation 3\%, Offline-Module 3\% \\ \hline
-		Hot-Spot-Multi (43\%) & No-Anomaly 30\%, Hot-Spot 9\%, Vegetation 5\%, Shadowing 4\%, Cracking 4\% \\ \hline
-		No-Anomaly (96\%) & Shadowing 1\%, Cell 1\%, Diode 1\%, Offline-Module 1\%, Hot-Spot-Multi 0\% \\ \hline
-		Offline-Module (44\%) & No-Anomaly 44\%, Cell 3\%, Vegetation 2\%, Diode 2\%, Cell-Multi 2\% \\ \hline
-		Shadowing (50\%) & No-Anomaly 34\%, Cell 3\%, Cell-Multi 3\%, Vegetation 3\%, Cracking 3\% \\ \hline
-		Soiling (21\%) & Hot-Spot-Multi 18\%, Cell 16\%, Vegetation 11\%, Cracking 11\%, Cell-Multi 11\% \\ \hline
-		Vegetation (57\%) & Cell 15\%, No-Anomaly 15\%, Cell-Multi 8\%, Cracking 2\%, Shadowing 1\% \\
+		Cell           & 49\% & No-Anomaly & 24\% & Vegetation & 14\% & Cell-Multi & 6\% & Offline-Module & 2\% & Shadowing & 2\% \\ \hline
+		Cell-Multi     & 30\% & Cell & 20\% & Cracking & 16\% & No-Anomaly & 14\% & Vegetation & 12\% & Shadowing & 2\% \\ \hline
+		Cracking       & 72\% & Cell-Multi & 7\% & Cell & 5\% & No-Anomaly & 4\% & Hot-Spot-Multi & 4\% & Vegetation & 3\% \\ \hline
+		Diode          & 78\% & No-Anomaly & 16\% & Offline-Module & 1\% & Cracking & 1\% & Cell-Multi & 1\% & Vegetation & 1\% \\ \hline
+		Diode-Multi    & 35\% & Diode & 37\% & No-Anomaly & 15\% & Offline-Module & 6\% & Cell & 4\% & Shadowing & 2\% \\ \hline
+		Hot-Spot       & 23\% & No-Anomaly & 56\% & Hot-Spot-Multi & 8\% & Shadowing & 4\% & Vegetation & 3\% & Offline-Module & 3\% \\ \hline
+		Hot-Spot-Multi & 43\% & No-Anomaly & 30\% & Hot-Spot & 9\% & Vegetation & 5\% & Shadowing & 4\% & Cracking & 4\% \\ \hline
+		No-Anomaly     & 96\% & Shadowing & 1\% & Cell & 1\% & Diode & 1\% & Offline-Module & 1\% & Hot-Spot-Multi & 0\% \\ \hline
+		Offline-Module & 44\% & No-Anomaly & 44\% & Cell & 3\% & Vegetation & 2\% & Diode & 2\% & Cell-Multi & 2\% \\ \hline
+		Shadowing      & 50\% & No-Anomaly & 34\% & Cell & 3\% & Cell-Multi & 3\% & Vegetation & 3\% & Cracking & 3\% \\ \hline
+		Soiling        & 21\% & Hot-Spot-Multi & 18\% & Cell & 16\% & Vegetation & 11\% & Cracking & 11\% & Cell-Multi & 11\% \\ \hline
+		Vegetation     & 57\% & Cell & 15\% & No-Anomaly & 15\% & Cell-Multi & 8\% & Cracking & 2\% & Shadowing & 1\% \\
 		\hline
-	\end{tabular}
+	\end{tabular}%
+	}
 \end{table}
 
 Dois padrões se destacam. Primeiro, vários tipos de anomalia sutil --- \textit{Hot-Spot} (56\%), \textit{Offline-Module} (44\%) e \textit{Shadowing} (34\%) --- são frequentemente confundidos com \textit{No-Anomaly}, indicando que sua assinatura térmica é fraca e próxima da de um módulo nominal. Segundo, há confusão entre classes "irmãs", de mesmo defeito em grau diferente, como \textit{Diode-Multi} com \textit{Diode} (37\%) e \textit{Cell-Multi} com \textit{Cell} (20\%). A classe \textit{No-Anomaly}, por sua vez, é classificada com excelência (96\% de acerto), reforçando a robustez do modelo como detector de falhas.
