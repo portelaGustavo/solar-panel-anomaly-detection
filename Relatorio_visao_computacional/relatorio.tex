@@ -270,6 +270,59 @@ A Tabela \ref{tab:benchmark_base} resume o desempenho geral de cada modelo.
 
 Os resultados evidenciam a superioridade dos métodos baseados em árvores, com destaque para o \textit{XGBoost}, que obteve o melhor desempenho tanto em acurácia quanto em \textit{F1-score} macro. O salto em relação à heurística inicial confirma a vantagem de combinar múltiplas características com um classificador treinado. Ainda assim, os valores relativamente modestos do \textit{F1-score} macro indicam dificuldade na distinção entre classes minoritárias e visualmente semelhantes, o que motiva o refinamento do conjunto de características descrito na seção seguinte.
 
+\subsection{Refinamento incremental das características}
+
+Como o \textit{Random Forest} (RF) e o \textit{XGBoost} (XGB) mostraram-se muito superiores ao \textit{Gradient Boosting} e ao SVM no benchmark anterior, o restante da análise prossegue apenas com esses dois modelos. Investigou-se o impacto de enriquecer o vetor de características: partindo do conjunto base de 25 atributos, novos grupos foram incorporados \textbf{de forma cumulativa} (cada etapa mantém os grupos anteriores e adiciona um novo), medindo-se a acurácia e o \textit{F1-score} macro a cada adição. Assim, a última linha das tabelas (181 features) corresponde a \textbf{todas as características em conjunto}. Os grupos acrescentados, nesta ordem, foram:
+
+\begin{itemize}[noitemsep]
+	\item \textbf{Grade 3x3 + LBP}: intensidade média em uma grade de nove células (localização do calor) e \textit{Local Binary Patterns} (textura local).
+	\item \textbf{Skewness e kurtosis}: assimetria e concentração da distribuição de intensidades.
+	\item \textbf{Momentos de Hu}: descritores de forma da maior mancha, invariantes a escala e rotação.
+	\item \textbf{Gabor + HOG}: resposta a filtros de Gabor (textura direcional) e histograma de gradientes orientados (formas e trincas).
+\end{itemize}
+
+A coluna $\Delta$ indica a variação em relação ao conjunto base. As Tabelas \ref{tab:incremental_rf} e \ref{tab:incremental_xgb} apresentam a evolução para o RF e o XGBoost, respectivamente.
+
+\begin{table}[H]
+	\centering
+	\caption{Refinamento incremental das características --- \textbf{Random Forest}.}
+	\label{tab:incremental_rf}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{l c c c c c}
+		\hline
+		\textbf{Conjunto de características} & \textbf{Nº feat.} & \textbf{Acurácia} & \textbf{$\Delta$} & \textbf{F1 macro} & \textbf{$\Delta$} \\
+		\hline
+		Base                 & 25  & 61,9\% & --     & 41,9\% & --     \\ \hline
+		+ Grade 3x3 + LBP    & 44  & 65,1\% & +3,2   & 43,3\% & +1,3   \\ \hline
+		+ Skewness/Kurtosis  & 46  & 64,9\% & +3,0   & 43,5\% & +1,6   \\ \hline
+		+ Momentos de Hu     & 53  & 65,3\% & +3,4   & 44,3\% & +2,3   \\ \hline
+		+ Gabor + HOG        & 181 & 67,8\% & +5,9   & 48,9\% & +7,0   \\
+		\hline
+	\end{tabular}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Refinamento incremental das características --- \textbf{XGBoost}.}
+	\label{tab:incremental_xgb}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{l c c c c c}
+		\hline
+		\textbf{Conjunto de características} & \textbf{Nº feat.} & \textbf{Acurácia} & \textbf{$\Delta$} & \textbf{F1 macro} & \textbf{$\Delta$} \\
+		\hline
+		Base                 & 25  & 66,6\% & --     & 42,2\% & --     \\ \hline
+		+ Grade 3x3 + LBP    & 44  & 69,7\% & +3,1   & 45,5\% & +3,4   \\ \hline
+		+ Skewness/Kurtosis  & 46  & 70,4\% & +3,8   & 46,6\% & +4,4   \\ \hline
+		+ Momentos de Hu     & 53  & 70,6\% & +4,0   & 47,6\% & +5,5   \\ \hline
+		+ Gabor + HOG        & 181 & 74,2\% & +7,6   & 53,9\% & +11,7  \\
+		\hline
+	\end{tabular}
+\end{table}
+
+Em ambos os modelos o desempenho cresce de forma consistente a cada grupo, e o salto mais expressivo vem do par \textit{Gabor} + HOG, indicando que descritores de textura direcional e de forma capturam padrões que as estatísticas de intensidade isoladas não representam. O ganho é mais acentuado no XGBoost, cujo \textit{F1-score} macro sobe de 42,2\% para 53,9\% (+11,7 pontos), contra +7,0 pontos do Random Forest, confirmando o XGBoost como o melhor classificador para o conjunto completo de características.
+
 \clearpage
 
 \section{Solução com \textit{deep learning}}
