@@ -41,7 +41,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_sample_weight
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, precision_recall_fscore_support
 from xgboost import XGBClassifier
 from tqdm import tqdm
 
@@ -205,25 +205,29 @@ modelos_33 = [
                    random_state=42, n_jobs=-1, eval_metric="mlogloss"), "XGBoost"),
 ]
 
-resumos_33, f1_classe_33 = [], {}
+# Siglas para as colunas
+SIGLA = {"RandomForest": "RF", "Gradient Boosting": "GB", "SVM": "SVM", "XGBoost": "XGB"}
+ordem_mod = ["RandomForest", "Gradient Boosting", "SVM", "XGBoost"]
+
+resumos_33, prf_33 = [], {}
 for m, n in modelos_33:
     resumo, pred = treinar_e_avaliar(m, X_base, n)
     resumos_33.append(resumo)
-    f1_classe_33[n] = f1_score(y_te, pred, average=None, labels=classes)
+    p, r, f, _ = precision_recall_fscore_support(y_te, pred, labels=classes, zero_division=0)
+    prf_33[n] = {"P": p * 100, "R": r * 100, "F1": f * 100}
 
 bench_33 = pd.DataFrame(resumos_33).set_index("modelo").sort_values("f1_macro", ascending=False)
 print("\n=== 3.3 Benchmark geral (features base) ===")
 print(bench_33)
 print("\n--- LaTeX (geral) ---")
-for nome, r in bench_33.iterrows():
-    print(f"{nome} & {r['acuracia']:.1f}\\% & {r['f1_macro']:.1f}\\% \\\\")
+for nome, rr in bench_33.iterrows():
+    print(f"{SIGLA[nome]} & {rr['acuracia']:.1f}\\% & {rr['f1_macro']:.1f}\\% \\\\")
 
-# F1 por classe (linhas = classes, colunas = modelos)
-ordem_mod = ["RandomForest", "Gradient Boosting", "SVM", "XGBoost"]
-tab_classe = pd.DataFrame({n: (f1_classe_33[n] * 100).round(1) for n in ordem_mod}, index=classes)
-print("\n=== 3.3 F1 por classe (%) ===")
-print(tab_classe)
-print("\n--- LaTeX (por classe) ---")
-for cls in classes:
-    vals = " & ".join(f"{tab_classe.loc[cls, n]:.1f}" for n in ordem_mod)
-    print(f"{cls} & {vals} \\\\")
+# Precision / Recall / F1 por classe; metrica no topo, modelos (RF/GB/SVM/XGB) como subcolunas
+print("\n--- LaTeX (por classe: metrica > modelo, %) ---")
+for ci, cls in enumerate(classes):
+    cells = []
+    for metrica in ["P", "R", "F1"]:
+        for n in ordem_mod:
+            cells.append(f"{prf_33[n][metrica][ci]:.0f}")
+    print(f"{cls} & " + " & ".join(cells) + r" \\")

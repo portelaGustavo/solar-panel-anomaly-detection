@@ -223,41 +223,46 @@ Todos foram treinados com tratamento do desbalanceamento e avaliados na mesma pa
 	\vspace{0.2cm}
 	\begin{tabular}{l c c}
 		\hline
-		\textbf{Modelo}   & \textbf{Acurácia} & \textbf{F1-score macro} \\
+		\textbf{Modelo} & \textbf{Acurácia} & \textbf{F1-score macro} \\
 		\hline
-		XGBoost           & 66,6\%            & 42,2\%                  \\
-		Random Forest     & 61,9\%            & 41,9\%                  \\
-		Gradient Boosting & 54,3\%            & 38,5\%                  \\
-		SVM               & 42,0\%            & 32,9\%                  \\
+		XGB             & 66,6\%            & 42,2\%                  \\
+		RF              & 61,9\%            & 41,9\%                  \\
+		GB              & 54,3\%            & 38,5\%                  \\
+		SVM             & 42,0\%            & 32,9\%                  \\
 		\hline
 	\end{tabular}
 \end{table}
 
-A Tabela \ref{tab:f1_classe_base} detalha o \textit{F1-score} por classe de cada modelo, permitindo localizar com maior precisão onde cada classificador acerta ou falha.
+A Tabela \ref{tab:f1_classe_base} detalha a \textit{precision} (P), o \textit{recall} (R) e o \textit{F1-score} (F1) por classe de cada modelo, permitindo localizar com maior precisão onde cada classificador acerta ou falha.
 
 \begin{table}[htpb]
 	\centering
-	\caption{\textit{F1-score} (\%) por classe de cada modelo sobre o conjunto base de características.}
+	\caption{\textit{Precision} (P), \textit{recall} (R) e \textit{F1-score} (F1), em \%, por classe e por modelo sobre o conjunto base de características.}
 	\label{tab:f1_classe_base}
 	\vspace{0.2cm}
-	\begin{tabular}{l c c c c}
+	\setlength{\tabcolsep}{6pt}
+	\renewcommand{\arraystretch}{1.25}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l|cccc|cccc|cccc}
 		\hline
-		\textbf{Classe} & \textbf{Random Forest} & \textbf{Gradient Boosting} & \textbf{SVM} & \textbf{XGBoost} \\
+		                & \multicolumn{4}{c|}{\textbf{Precision}} & \multicolumn{4}{c|}{\textbf{Recall}} & \multicolumn{4}{c}{\textbf{F1-score}} \\
+		\textbf{Classe} & RF & GB & SVM & XGB & RF & GB & SVM & XGB & RF & GB & SVM & XGB \\
 		\hline
-		Cell            & 45,7                   & 42,7                       & 39,5         & 48,5             \\
-		Cell-Multi      & 29,3                   & 31,6                       & 22,4         & 31,8             \\
-		Cracking        & 65,1                   & 62,5                       & 63,3         & 66,0             \\
-		Diode           & 61,0                   & 58,3                       & 57,6         & 67,4             \\
-		Diode-Multi     & 27,5                   & 23,3                       & 11,1         & 20,0             \\
-		Hot-Spot        & 17,7                   & 11,3                       & 7,8          & 10,3             \\
-		Hot-Spot-Multi  & 32,2                   & 27,6                       & 13,8         & 39,4             \\
-		No-Anomaly      & 79,3                   & 71,4                       & 55,6         & 83,2             \\
-		Offline-Module  & 35,8                   & 32,4                       & 28,5         & 37,9             \\
-		Shadowing       & 43,6                   & 37,5                       & 36,8         & 42,9             \\
-		Soiling         & 20,0                   & 21,1                       & 18,7         & 13,6             \\
-		Vegetation      & 45,7                   & 42,8                       & 39,9         & 44,9             \\
+		Cell            & 46 & 44 & 46 & 49 & 45 & 41 & 35 & 48 & 46 & 43 & 40 & 48 \\ \hline
+		Cell-Multi      & 36 & 35 & 35 & 36 & 25 & 29 & 17 & 28 & 29 & 32 & 22 & 32 \\ \hline
+		Cracking        & 59 & 57 & 59 & 63 & 73 & 69 & 68 & 69 & 65 & 62 & 63 & 66 \\ \hline
+		Diode           & 54 & 53 & 58 & 69 & 70 & 65 & 57 & 66 & 61 & 58 & 58 & 67 \\ \hline
+		Diode-Multi     & 39 & 19 &  7 & 39 & 21 & 29 & 35 & 13 & 28 & 23 & 11 & 20 \\ \hline
+		Hot-Spot        & 26 &  8 &  4 & 23 & 13 & 23 & 41 &  7 & 18 & 11 &  8 & 10 \\ \hline
+		Hot-Spot-Multi  & 28 & 20 &  8 & 47 & 38 & 43 & 42 & 34 & 32 & 28 & 14 & 39 \\ \hline
+		No-Anomaly      & 82 & 84 & 85 & 78 & 76 & 62 & 41 & 89 & 79 & 71 & 56 & 83 \\ \hline
+		Offline-Module  & 29 & 25 & 21 & 44 & 46 & 46 & 46 & 33 & 36 & 32 & 28 & 38 \\ \hline
+		Shadowing       & 40 & 30 & 28 & 49 & 48 & 49 & 54 & 38 & 44 & 37 & 37 & 43 \\ \hline
+		Soiling         & 26 & 19 & 13 & 22 & 16 & 25 & 36 & 10 & 20 & 21 & 19 & 14 \\ \hline
+		Vegetation      & 46 & 41 & 41 & 47 & 46 & 45 & 39 & 43 & 46 & 43 & 40 & 45 \\
 		\hline
-	\end{tabular}
+	\end{tabular}%
+	}
 \end{table}
 
 Os resultados evidenciam a superioridade dos métodos baseados em árvores, com destaque para o \textit{XGBoost}, que obteve o melhor desempenho tanto em acurácia quanto em \textit{F1-score} macro. O salto em relação à heurística inicial confirma a vantagem de combinar múltiplas características com um classificador treinado. Ainda assim, os valores relativamente modestos do \textit{F1-score} macro indicam dificuldade na distinção entre classes minoritárias e visualmente semelhantes, o que motiva o refinamento do conjunto de características descrito na seção seguinte.
