@@ -188,6 +188,60 @@ A partir da estabilização visual dos dados, estabeleceu-se que os defeitos bas
 	      \end{itemize}
 \end{enumerate}
 
+\subsection{Extração de características e comparação de classificadores}
+
+O \textit{pipeline} heurístico da seção anterior, embora eficaz para defeitos com forte assinatura geométrica como a classe \textit{Cell}, mostra-se limitado: por basear-se em uma única medida (a área da maior mancha quente) e em limiares fixos, ele cobre apenas um pequeno subconjunto das doze classes do problema. Para superar essa limitação, adotou-se uma abordagem baseada em aprendizado de máquina, na qual cada imagem é convertida em um vetor de características numéricas e a classificação passa a ser aprendida a partir dos dados, em vez de definida por regras manuais.
+
+Foi elaborado um conjunto inicial de 25 características que sumarizam o conteúdo de cada imagem termográfica sob diferentes aspectos: estatísticas de intensidade (média, desvio padrão, máximo, mínimo e percentil 90); descritores da região quente segmentada por limiarização de Otsu (fração de pixels quentes, número de manchas, área, extensão e razão de aspecto da maior mancha, além da cobertura por linha e por coluna); fração de região fria; densidade de bordas (\textit{Canny}); textura média (gradiente de \textit{Sobel}); medidas de simetria horizontal e vertical; e um histograma de intensidades com oito faixas.
+
+Sobre esse conjunto de características, avaliaram-se quatro classificadores de naturezas distintas: \textit{Random Forest} (conjunto de árvores por agregação), \textit{Gradient Boosting} (árvores em sequência que corrigem o erro das anteriores), \textit{Support Vector Machine} (SVM, com normalização das características) e \textit{XGBoost} (\textit{gradient boosting} otimizado). Todos os modelos foram treinados com tratamento do desbalanceamento das classes e avaliados sobre a mesma partição de teste (30\% dos dados, estratificada). A Tabela \ref{tab:benchmark_base} apresenta a acurácia e o \textit{F1-score} macro de cada modelo. Adota-se o \textit{F1-score} macro como métrica principal por atribuir peso igual a todas as classes, evidenciando o desempenho nas categorias minoritárias, que de outro modo seriam ofuscadas pela classe majoritária \textit{No-Anomaly}.
+
+\begin{table}[htpb]
+	\centering
+	\caption{Comparação dos classificadores sobre o conjunto base de 25 características.}
+	\label{tab:benchmark_base}
+	\vspace{0.2cm}
+	\begin{tabular}{l c c}
+		\hline
+		\textbf{Modelo}   & \textbf{Acurácia} & \textbf{F1-score macro} \\
+		\hline
+		XGBoost           & 66,6\%            & 42,2\%                  \\
+		Random Forest     & 61,9\%            & 41,9\%                  \\
+		Gradient Boosting & 54,3\%            & 38,5\%                  \\
+		SVM               & 42,0\%            & 32,9\%                  \\
+		\hline
+	\end{tabular}
+\end{table}
+
+A Tabela \ref{tab:f1_classe_base} detalha o \textit{F1-score} por classe de cada modelo, permitindo localizar com maior precisão onde cada classificador acerta ou falha.
+
+\begin{table}[htpb]
+	\centering
+	\caption{\textit{F1-score} (\%) por classe de cada modelo sobre o conjunto base de características.}
+	\label{tab:f1_classe_base}
+	\vspace{0.2cm}
+	\begin{tabular}{l c c c c}
+		\hline
+		\textbf{Classe} & \textbf{Random Forest} & \textbf{Gradient Boosting} & \textbf{SVM} & \textbf{XGBoost} \\
+		\hline
+		Cell            & 45,7                   & 42,7                       & 39,5         & 48,5             \\
+		Cell-Multi      & 29,3                   & 31,6                       & 22,4         & 31,8             \\
+		Cracking        & 65,1                   & 62,5                       & 63,3         & 66,0             \\
+		Diode           & 61,0                   & 58,3                       & 57,6         & 67,4             \\
+		Diode-Multi     & 27,5                   & 23,3                       & 11,1         & 20,0             \\
+		Hot-Spot        & 17,7                   & 11,3                       & 7,8          & 10,3             \\
+		Hot-Spot-Multi  & 32,2                   & 27,6                       & 13,8         & 39,4             \\
+		No-Anomaly      & 79,3                   & 71,4                       & 55,6         & 83,2             \\
+		Offline-Module  & 35,8                   & 32,4                       & 28,5         & 37,9             \\
+		Shadowing       & 43,6                   & 37,5                       & 36,8         & 42,9             \\
+		Soiling         & 20,0                   & 21,1                       & 18,7         & 13,6             \\
+		Vegetation      & 45,7                   & 42,8                       & 39,9         & 44,9             \\
+		\hline
+	\end{tabular}
+\end{table}
+
+Os resultados evidenciam a superioridade dos métodos baseados em árvores, com destaque para o \textit{XGBoost}, que obteve o melhor desempenho tanto em acurácia quanto em \textit{F1-score} macro. O salto em relação à heurística inicial confirma a vantagem de combinar múltiplas características com um classificador treinado. Ainda assim, os valores relativamente modestos do \textit{F1-score} macro indicam dificuldade na distinção entre classes minoritárias e visualmente semelhantes, o que motiva o refinamento do conjunto de características descrito na seção seguinte.
+
 \clearpage
 
 \section{Solução com \textit{deep learning}}
