@@ -398,6 +398,54 @@ Um aspecto importante desse detector é que o limiar de decisão pode ser ajusta
 
 Reduzindo o limiar de 0,50 para valores menores, o \textit{recall} sobe progressivamente, permitindo capturar quase todas as anomalias ao custo de uma precisão menor. Na prática, isso significa que o operador pode calibrar o sistema para priorizar a segurança (não deixar passar falhas), aceitando inspecionar alguns painéis sãos a mais --- um ajuste desejável em um cenário de triagem automática.
 
+\subsection{Análise do melhor modelo (XGBoost)}
+
+Confirmado o \textit{XGBoost} como o melhor classificador (74,2\% de acurácia e 53,9\% de \textit{F1-score} macro no conjunto completo), analisou-se em detalhe \textit{onde} o modelo erra. As Figuras \ref{fig:matriz_precision} e \ref{fig:matriz_recall} apresentam a matriz de confusão normalizada por coluna (\textit{precision}) e por linha (\textit{recall}), respectivamente. A primeira responde "do que foi previsto como classe X, quanto era X de fato"; a segunda, "da classe real X, quanto foi corretamente identificado".
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\linewidth]{matriz_xgb_precision.png}
+	\caption{Matriz de confusão do XGBoost normalizada por coluna (\textit{precision}).}
+	\label{fig:matriz_precision}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\linewidth]{matriz_xgb_recall.png}
+	\caption{Matriz de confusão do XGBoost normalizada por linha (\textit{recall}).}
+	\label{fig:matriz_recall}
+\end{figure}
+
+A partir da matriz por linha, a Tabela \ref{tab:confusoes} resume, para cada classe, o seu acerto próprio (\textit{recall}) e a classe com a qual mais se confunde.
+
+\begin{table}[H]
+	\centering
+	\caption{Maior confusão por classe (a partir da matriz de \textit{recall} do XGBoost).}
+	\label{tab:confusoes}
+	\vspace{0.2cm}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{l c l c}
+		\hline
+		\textbf{Classe verdadeira} & \textbf{Acerto} & \textbf{Mais confunde com} & \textbf{\%} \\
+		\hline
+		Cell           & 49\% & No-Anomaly     & 24\% \\ \hline
+		Cell-Multi     & 30\% & Cell           & 20\% \\ \hline
+		Cracking       & 72\% & Cell-Multi     &  7\% \\ \hline
+		Diode          & 78\% & No-Anomaly     & 16\% \\ \hline
+		Diode-Multi    & 35\% & Diode          & 37\% \\ \hline
+		Hot-Spot       & 23\% & No-Anomaly     & 56\% \\ \hline
+		Hot-Spot-Multi & 43\% & No-Anomaly     & 30\% \\ \hline
+		No-Anomaly     & 96\% & Shadowing      &  1\% \\ \hline
+		Offline-Module & 44\% & No-Anomaly     & 44\% \\ \hline
+		Shadowing      & 50\% & No-Anomaly     & 34\% \\ \hline
+		Soiling        & 21\% & Hot-Spot-Multi & 18\% \\ \hline
+		Vegetation     & 57\% & Cell           & 15\% \\
+		\hline
+	\end{tabular}
+\end{table}
+
+Dois padrões se destacam. Primeiro, vários tipos de anomalia sutil --- \textit{Hot-Spot} (56\%), \textit{Offline-Module} (44\%) e \textit{Shadowing} (34\%) --- são frequentemente confundidos com \textit{No-Anomaly}, indicando que sua assinatura térmica é fraca e próxima da de um módulo nominal. Segundo, há confusão entre classes "irmãs", de mesmo defeito em grau diferente, como \textit{Diode-Multi} com \textit{Diode} (37\%) e \textit{Cell-Multi} com \textit{Cell} (20\%). A classe \textit{No-Anomaly}, por sua vez, é classificada com excelência (96\% de acerto), reforçando a robustez do modelo como detector de falhas.
+
 \clearpage
 
 \section{Solução com \textit{deep learning}}
