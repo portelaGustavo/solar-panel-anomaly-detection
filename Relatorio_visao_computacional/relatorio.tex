@@ -190,11 +190,31 @@ A partir da estabilização visual dos dados, estabeleceu-se que os defeitos bas
 
 \subsection{Extração de características e comparação de classificadores}
 
-O \textit{pipeline} heurístico da seção anterior, embora eficaz para defeitos com forte assinatura geométrica como a classe \textit{Cell}, mostra-se limitado: por basear-se em uma única medida (a área da maior mancha quente) e em limiares fixos, ele cobre apenas um pequeno subconjunto das doze classes do problema. Para superar essa limitação, adotou-se uma abordagem baseada em aprendizado de máquina, na qual cada imagem é convertida em um vetor de características numéricas e a classificação passa a ser aprendida a partir dos dados, em vez de definida por regras manuais.
+Após o teste inicial focado na classe \textit{Cell}, optou-se por uma abordagem de aprendizado de máquina, na qual cada imagem é convertida em um vetor de características. Definiu-se um conjunto inicial de 25 características:
 
-Foi elaborado um conjunto inicial de 25 características que sumarizam o conteúdo de cada imagem termográfica sob diferentes aspectos: estatísticas de intensidade (média, desvio padrão, máximo, mínimo e percentil 90); descritores da região quente segmentada por limiarização de Otsu (fração de pixels quentes, número de manchas, área, extensão e razão de aspecto da maior mancha, além da cobertura por linha e por coluna); fração de região fria; densidade de bordas (\textit{Canny}); textura média (gradiente de \textit{Sobel}); medidas de simetria horizontal e vertical; e um histograma de intensidades com oito faixas.
+\begin{itemize}[noitemsep]
+	\item \textbf{Estatísticas de intensidade}: média, desvio padrão, máximo, mínimo e percentil 90 dos pixels.
+	\item \textbf{Fração de região quente}: proporção de pixels acima do limiar de Otsu.
+	\item \textbf{Número de manchas}: quantidade de regiões quentes distintas.
+	\item \textbf{Geometria da maior mancha}: área, extensão e razão de aspecto.
+	\item \textbf{Cobertura por linha e coluna}: espalhamento vertical e horizontal do calor.
+	\item \textbf{Fração de região fria}: proporção de pixels bem abaixo da média.
+	\item \textbf{Densidade de bordas}: contornos detectados pelo operador \textit{Canny}.
+	\item \textbf{Textura}: magnitude média do gradiente (operador de \textit{Sobel}).
+	\item \textbf{Simetria}: diferença da imagem em relação a si espelhada na horizontal e na vertical.
+	\item \textbf{Histograma}: distribuição de intensidades em oito faixas.
+\end{itemize}
 
-Sobre esse conjunto de características, avaliaram-se quatro classificadores de naturezas distintas: \textit{Random Forest} (conjunto de árvores por agregação), \textit{Gradient Boosting} (árvores em sequência que corrigem o erro das anteriores), \textit{Support Vector Machine} (SVM, com normalização das características) e \textit{XGBoost} (\textit{gradient boosting} otimizado). Todos os modelos foram treinados com tratamento do desbalanceamento das classes e avaliados sobre a mesma partição de teste (30\% dos dados, estratificada). A Tabela \ref{tab:benchmark_base} apresenta a acurácia e o \textit{F1-score} macro de cada modelo. Adota-se o \textit{F1-score} macro como métrica principal por atribuir peso igual a todas as classes, evidenciando o desempenho nas categorias minoritárias, que de outro modo seriam ofuscadas pela classe majoritária \textit{No-Anomaly}.
+Sobre esse conjunto, avaliaram-se quatro classificadores:
+
+\begin{itemize}[noitemsep]
+	\item \textbf{Random Forest}: conjunto de árvores de decisão combinadas por agregação (\textit{bagging}).
+	\item \textbf{Gradient Boosting}: árvores em sequência, cada uma corrigindo o erro da anterior.
+	\item \textbf{SVM}: busca a fronteira de maior margem entre as classes; exige normalização das características.
+	\item \textbf{XGBoost}: \textit{gradient boosting} otimizado, robusto em dados tabulares.
+\end{itemize}
+
+Todos foram treinados com tratamento do desbalanceamento e avaliados na mesma partição de teste (30\%, estratificada). Adota-se o \textit{F1-score} macro como métrica principal, por pesar todas as classes igualmente. A Tabela \ref{tab:benchmark_base} traz o desempenho geral.
 
 \begin{table}[htpb]
 	\centering
