@@ -1,0 +1,12 @@
+DECLARAÇÃO DE USO DE INTELIGÊNCIA ARTIFICIAL
+
+Neste trabalho foi utilizada Inteligência Artificial, especificamente a
+ferramenta Claude Code (Anthropic), como apoio ao desenvolvimento.
+
+O uso da IA teve como objetivo acelerar o teste e o desenvolvimento do
+projeto, que conta com um grande número de features no modo clássico.
+A ferramenta auxiliou na escrita, revisão e validação de código, tornando
+o processo mais rápido e produtivo.
+
+A concepção, as decisões de projeto e a revisão final permanecem de
+responsabilidade do autor.
